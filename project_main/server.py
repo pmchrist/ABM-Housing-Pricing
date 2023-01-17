@@ -1,8 +1,12 @@
-import mesa
-import mesa_geo as mg
+# README:
+# No idea for now how it works. Basically handles visualization only
+
 import xyzservices.providers as xyz
 
-from model import GeoSchelling
+import mesa
+import mesa_geo as mg
+
+from models import GeoSchelling
 
 
 class HappyElement(mesa.visualization.TextElement):

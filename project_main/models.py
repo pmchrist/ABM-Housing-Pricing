@@ -1,57 +1,25 @@
+# File that handles model interaction
+# We should also hold all the data collection through here
+
 import random
 
 import mesa
-
 import mesa_geo as mg
 
-
-class SchellingAgent(mg.GeoAgent):
-    """Schelling segregation agent."""
-
-    def __init__(self, unique_id, model, geometry, crs, agent_type=None):
-        """Create a new Schelling agent.
-
-        Args:
-            unique_id: Unique identifier for the agent.
-            agent_type: Indicator for the agent's type (minority=1, majority=0)
-        """
-        super().__init__(unique_id, model, geometry, crs)
-        self.atype = agent_type
-
-    def step(self):
-        """Advance agent one step."""
-        similar = 0
-        different = 0
-        neighbors = self.model.space.get_neighbors(self)
-        if neighbors:
-            for neighbor in neighbors:
-                if neighbor.atype is None:
-                    continue
-                elif neighbor.atype == self.atype:
-                    similar += 1
-                else:
-                    different += 1
-
-        # If unhappy, move:
-        if similar < different:
-            # Select an empty region
-            empties = [a for a in self.model.space.agents if a.atype is None]
-            # Switch atypes and add/remove from scheduler
-            new_region = random.choice(empties)
-            new_region.atype = self.atype
-            self.model.schedule.add(new_region)
-            self.atype = None
-            self.model.schedule.remove(self)
-        else:
-            self.model.happy += 1
-
-    def __repr__(self):
-        return "Agent " + str(self.unique_id)
+from agents import SchellingAgent
 
 
+# Our main model class
+class Housing(mesa.Model):
+    def __init__(self) -> None:
+        super().__init__()
+
+
+# Model Example
 class GeoSchelling(mesa.Model):
     """Model class for the Schelling segregation model."""
 
+    # Basically, we can pass anything here, width, height and init population are given by map and neighbourhouds amount (in current case)
     def __init__(self, density=0.6, minority_pc=0.2, export_data=False):
         self.density = density
         self.minority_pc = minority_pc
@@ -65,7 +33,7 @@ class GeoSchelling(mesa.Model):
 
         self.running = True
 
-        # Set up the grid with patches for every NUTS region
+        # Set up the grid with patches for every region
         ac = mg.AgentCreator(SchellingAgent, model=self)
         agents = ac.from_file("Amsterdam_map_from_github.geojson")
         self.space.add_agents(agents)
@@ -79,11 +47,13 @@ class GeoSchelling(mesa.Model):
                     agent.atype = 0
                 self.schedule.add(agent)
 
+    # No idea, some export for visualization, I guess
     def export_agents_to_file(self) -> None:
         self.space.get_agents_as_GeoDataFrame(agent_cls=SchellingAgent).to_crs(
             "epsg:4326"
         ).to_file("data/schelling_agents.geojson", driver="GeoJSON")
 
+    # Step for model, same as in simple mesa
     def step(self):
         """Run one step of the model.
 
