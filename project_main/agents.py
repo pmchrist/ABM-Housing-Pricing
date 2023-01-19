@@ -1,20 +1,44 @@
-import random
-
 import mesa
 import mesa_geo as mg
 
-#from models import Housing
 
 
 # Agent for Person who gets a house and moves
 class Person(mesa.Agent):
-    def __init__(self, unique_id: int, model: mesa.Model) -> None:
-        super().__init__(unique_id, model)
+    def __init__(self, unique_id: int, model: mesa.Model, weight_1, weight_2, living_location) -> None:
+        super().__init__(unique_id, model)      # Weights for utility function
+        # Init without house = looking for house
+        self.weight_1 = weight_1    # Weight for Contentment function
+        self.weight_2 = weight_2    # Weight for Contentment function
+        self.contentment_threshold = 0.3    # Just for example
+        self.selling = None
+        self.neighbourhood = living_location
+    
+    # Currently only finding contentment, based on 2 parameters
+    # Implemented to test model, needs contentment score to run trade
+    def step(self):
+        # Instead of 1.0 should be param from neighbourhood
+        self.contentment = self.weight_1 * 1.0 + self.weight_2 * 1.0
+        # Wants to sell
+        if self.contentment <= self.contentment_threshold:
+            self.selling = True
+        else:
+            self.selling = False
 
-# Neighbourhoods are also defined as Agents
+
+# Agent for Neighbourhood
 class Neighbourhood(mg.GeoAgent):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, unique_id, model, geometry, crs):
+        super().__init__(unique_id, model, geometry, crs)
+        self.capacity = -1
+        self.param_1 = None
+        self.param_2 = None
+    
+    def step(self):
+        # Nothing for now
+        return
+
+
 
 
 # Example to use as reference
