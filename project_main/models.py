@@ -26,6 +26,7 @@ class Housing(mesa.Model):
 
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
+        self.deals = 0  # Amount of exchanges happening
         #self.datacollector = mesa.DataCollector()
 
         # Seting up Mesa Geo Agents
@@ -52,7 +53,46 @@ class Housing(mesa.Model):
 
     # Step for model, same as in simple mesa
     def step(self):
+        self.schedule.step()    # runs step in agents
         # For each agent check if he wants to sell
+        agents = self.schedule.agents
+        sellers = []
+        # Do something for people
+        for agent in agents:
+            if isinstance(agent, Person): 
+                if agent.selling: sellers.append(agent)
+        for seller in sellers:
+            for buyer in sellers:
+                if buyer != seller:
+                    new_seller_score = seller.calculate_contentment(buyer.neighbourhood)
+                    new_buyer_score = buyer.calculate_contentment(seller.neighbourhood)
+                    #print(new_seller_score)
+                    #print(new_buyer_score)
+                    # Improve buyer seller matching, by getting all better offers, not ffirst one
+                    if new_buyer_score > buyer.contentment and new_seller_score > seller.contentment:
+                        # Swapping houses
+                        buyer_destination = seller.neighbourhood
+                        seller_destination = buyer.neighbourhood
+                        buyer.neighbourhood = buyer_destination
+                        seller.neighbourhood = seller_destination
+                        self.deals += 1
+
+
+
+        # Do something for neighbourhoods
+        for agent in agents:
+            if isinstance(agent, Neighbourhood): 
+               break
+        
+
+
+## Neighbour Regions
+#neighbors = m.space.get_neighbors(agent)
+#print([a.unique_id for a in neighbors])
+## Regioins in close space
+#print([a.unique_id for a in m.space.get_neighbors_within_distance(agent, 500)])
+
+
         return
 
 

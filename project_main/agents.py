@@ -13,17 +13,22 @@ class Person(mesa.Agent):
         self.contentment_threshold = 0.3    # Just for example
         self.selling = None
         self.neighbourhood = living_location
-    
+        self.contentment = self.calculate_contentment(self.neighbourhood)
+
     # Currently only finding contentment, based on 2 parameters
     # Implemented to test model, needs contentment score to run trade
     def step(self):
         # Instead of 1.0 should be param from neighbourhood
-        self.contentment = self.weight_1 * 1.0 + self.weight_2 * 1.0
+        self.contentment = self.calculate_contentment(self.neighbourhood)
         # Wants to sell
         if self.contentment <= self.contentment_threshold:
             self.selling = True
         else:
             self.selling = False
+    
+    def calculate_contentment(self, neighbourhood):
+        return self.weight_1 * neighbourhood.param_1 + self.weight_2 * neighbourhood.param_2
+
 
 
 # Agent for Neighbourhood

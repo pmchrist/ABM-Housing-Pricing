@@ -15,7 +15,14 @@ for i in range(10):
 agents = model.schedule.agents
 for agent in agents:
     if isinstance(agent, Neighbourhood): 
-        print(agent.capacity)
+        #print(agent.capacity)
+        continue
+for agent in agents:
+    if isinstance(agent, Person): 
+        #print(agent.neighbourhood.unique_id)
+        continue
+
+print(model.deals)
     
 
 #agent.geometry
