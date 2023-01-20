@@ -1,30 +1,37 @@
-# Pointless file, but it is nicer to run everything by executing  ~python run.py
-
+# Used in Schelling
 #from server import server
 #server.launch()
 
 from models import Housing
 from agents import Person, Neighbourhood
 
+# Some values for statistics at the end
+population = 0
+unhappy_population = 0
+
 # Run model for 10 steps
 model = Housing()
-for i in range(10):
+for i in range(5):
     model.step()
 
-# Show who lives where
+# Show who lives where (Was used for Debug)
 agents = model.schedule.agents
 for agent in agents:
     if isinstance(agent, Neighbourhood): 
-        #print(agent.capacity)
+        #print("Amount of people living: ", agent.capacity)
         continue
 for agent in agents:
     if isinstance(agent, Person): 
-        #print(agent.neighbourhood.unique_id)
-        continue
+        population += 1
+        if agent.contentment < agent.contentment_threshold:
+            unhappy_population += 1
 
-print(model.deals)
-    
+print("Population: ", population)
+print("Unhappy Population %: ", unhappy_population/population)
 
+
+# Some available stuff to access:
+#
 #agent.geometry
 #agent.Oppervlakte_m2
 ## Available Params

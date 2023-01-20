@@ -1,20 +1,15 @@
 # File that handles model interaction
-# We should also hold all the data collection through here
+# We should also manage all the data imports here (as they are part of neighbourhood init)
 
 from agents import Neighbourhood
 from agents import Person
+from agents import SchellingAgent
 
 import random
 import json
 
 import mesa
 import mesa_geo as mg
-
-from agents import SchellingAgent
-from mesa import Model
-from mesa.space import MultiGrid
-from mesa.datacollection import DataCollector
-from mesa.time import RandomActivation
 
 
 
@@ -26,8 +21,8 @@ class Housing(mesa.Model):
 
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
-        self.deals = 0  # Amount of exchanges happening
-        #self.datacollector = mesa.DataCollector()
+        self.deals = 0  # Amount of exchanges happening on each step
+        #self.datacollector = mesa.datacollection.DataCollector()
 
         # Seting up Mesa Geo Agents
         # Set up the grid with patches for every region (Adding neighbourhood agents)
@@ -37,38 +32,42 @@ class Housing(mesa.Model):
         neighbourhoods = neighbourhood_Agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
         self.space.add_agents(neighbourhoods)
         # Set up Neighbourhoods with People
-        k = 0   # needed for counter
+        k = 0   # needed for counter to keep correct People IDs
         for geo_agent in neighbourhoods:
             # Init each neighbourhood with their parameters
+            # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
             geo_agent.param_1 = random.random()
             geo_agent.param_2 = random.random()
             geo_agent.capacity = random.randint(1, 10)
+            geo_agent.salary = random.randint(10,20)
+            geo_agent.cost_of_living = random.randint(10,20)
             self.schedule.add(geo_agent)
-            # Creating People
+            # Creating People and assigning them to a region
             for i in range(geo_agent.capacity):
-                person = Person(k+i, self, weight_1=random.random(), weight_2=random.random(), living_location=geo_agent)
+                person = Person(unique_id=k+i, model=self, weight_1=random.random(), weight_2=random.random(), starting_money=random.randint(100, 200), living_location=geo_agent)
                 self.schedule.add(person)
+            # Update counter for People IDs
             k += geo_agent.capacity
 
 
     # Step for model, same as in simple mesa
     def step(self):
-        self.schedule.step()    # runs step in agents
-        # For each agent check if he wants to sell
+        self.schedule.step()    # runs step in Agents
+
+        # For each agent (Person) check if he wants to sell
         agents = self.schedule.agents
         sellers = []
-        # Do something for people
         for agent in agents:
             if isinstance(agent, Person): 
                 if agent.selling: sellers.append(agent)
+        # Manage housing market
         for seller in sellers:
             for buyer in sellers:
                 if buyer != seller:
                     new_seller_score = seller.calculate_contentment(buyer.neighbourhood)
                     new_buyer_score = buyer.calculate_contentment(seller.neighbourhood)
-                    #print(new_seller_score)
-                    #print(new_buyer_score)
-                    # Improve buyer seller matching, by getting all better offers, not ffirst one
+                    # Improve buyer seller matching, by getting all better offers, and choose from them
+                    # If a person for whom exchanges also improves contentment, swap houses
                     if new_buyer_score > buyer.contentment and new_seller_score > seller.contentment:
                         # Swapping houses
                         buyer_destination = seller.neighbourhood
@@ -76,23 +75,17 @@ class Housing(mesa.Model):
                         buyer.neighbourhood = buyer_destination
                         seller.neighbourhood = seller_destination
                         self.deals += 1
+                        # Add money paid, based on the deviation from contentment score threshold
+        # Just showing amount of trades after current step
+        print(self.deals)
+        self.deals=0
 
-
-
-        # Do something for neighbourhoods
+        # Do something in neighbourhoods
         for agent in agents:
             if isinstance(agent, Neighbourhood): 
+                # Nothing for now
                break
         
-
-
-## Neighbour Regions
-#neighbors = m.space.get_neighbors(agent)
-#print([a.unique_id for a in neighbors])
-## Regioins in close space
-#print([a.unique_id for a in m.space.get_neighbors_within_distance(agent, 500)])
-
-
         return
 
 
