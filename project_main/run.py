@@ -4,6 +4,7 @@
 #server.launch()
 
 from models import Housing
+from agents import Person, Neighbourhood
 
 # Run model for 10 steps
 model = Housing()
@@ -13,7 +14,8 @@ for i in range(10):
 # Show who lives where
 agents = model.schedule.agents
 for agent in agents:
-    print(agent.unique_id)
+    if isinstance(agent, Neighbourhood): 
+        print(agent.capacity)
     
 
 #agent.geometry
