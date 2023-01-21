@@ -49,7 +49,8 @@ housing_element = HousingElement()
 map_element = mg.visualization.MapModule(
     schelling_draw, [52.3676, 4.9041], 11, tiles=xyz.CartoDB.Positron
 )
-happy_chart = mesa.visualization.ChartModule([{"Label": "deals", "Color": "Black"}])
+deals_chart = mesa.visualization.ChartModule([{"Label": "Deals", "Color": "Black"}])
+contentment_chart = mesa.visualization.ChartModule([{"Label": "Average Contentment", "Color": "Black"}])
 server = mesa.visualization.ModularServer(
-    Housing, [map_element, housing_element, happy_chart], "Housing Market", model_params
+    Housing, [map_element, housing_element, deals_chart, contentment_chart], "Housing Market", model_params
 )

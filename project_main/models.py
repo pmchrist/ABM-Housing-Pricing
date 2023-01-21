@@ -28,14 +28,16 @@ class Housing(mesa.Model):
         self.weight_1 = weight_1    # If they are fixed, no exchanges are happening
         self.weight_2 = weight_2    # If they are fixed, no exchanges are happening
 
+        # Running statistics of the model
+        self.population_size = 0   # needed for counter to keep correct People IDs
+        self.average_contentment = 0    # Average contentment in Agents
         self.deals = 0  # Amount of exchanges happening on each step
         self.running = True
 
         # Attributes
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
-        #self.datacollector = mesa.datacollection.DataCollector()
-        self.datacollector = mesa.DataCollector({"deals": "deals"})
+        self.datacollector = mesa.DataCollector({"Deals": "deals", "Average Contentment": "average_contentment"})
 
         # Seting up Mesa Geo Agents
         # Set up the grid with patches for every region (Adding neighbourhood agents)
@@ -46,7 +48,6 @@ class Housing(mesa.Model):
         self.space.add_agents(neighbourhoods)
 
         # Set up Neighbourhoods with People
-        k = 0   # needed for counter to keep correct People IDs
         for geo_agent in neighbourhoods:
             # Init each neighbourhood with their parameters
             # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
@@ -55,21 +56,26 @@ class Housing(mesa.Model):
             geo_agent.capacity = random.randint(10, 50)
             geo_agent.salary = random.randint(10,20)
             geo_agent.cost_of_living = random.randint(10,20)
-            self.average_house_price = random.randint(100,200)
+            geo_agent.average_house_price = random.randint(50,150)
             self.schedule.add(geo_agent)
             # Creating People and assigning them to a region
             for i in range(geo_agent.capacity):
                 # WEIGHTS ARE RANDOM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
-                person = Person(unique_id=k+i, model=self, weight_1=random.random(), weight_2=random.random(), starting_money=random.randint(100, 200), living_location=geo_agent)
+                person = Person(unique_id=self.population_size+i, model=self, weight_1=random.random(), weight_2=random.random(), starting_money=random.randint(200, 500), living_location=geo_agent)
                 self.schedule.add(person)
+                # Upadating contentment for the init
+                self.average_contentment += person.contentment
             # Update counter for People IDs
-            k += geo_agent.capacity
+            self.population_size += geo_agent.capacity
+        self.average_contentment = self.average_contentment/self.population_size
+        #print("Init Average Contentment: ", self.average_contentment)
 
     # Step for model, same as in simple mesa
     def step(self):
         """Advance the model by one step.""" 
 
         self.deals = 0  # Reset counter of deals
+        self.average_contentment = 0
         self.schedule.step() # runs step in Agents
         
         # For each agent (Person) check if he wants to sell
@@ -82,13 +88,22 @@ class Housing(mesa.Model):
         # Find potential trades
         for seller in sellers:
             for buyer in sellers:
-                if buyer != seller and buyer and seller:
+                if buyer != seller and buyer is not None and seller is not None:
                     # Calculate contentment for both parties in potential new neighbourhoods
                     new_seller_score = seller.calculate_contentment(buyer.neighbourhood)
                     new_buyer_score = buyer.calculate_contentment(seller.neighbourhood)
                     # Improve buyer seller matching, by getting all better offers, and choose from them
                     # If both parties are happy with the deal, swap houses
                     if new_buyer_score > buyer.contentment and new_seller_score > seller.contentment:
+                        # TO WORK PROPERLY, NEEDS CALCULATION OF AVERAGE HOUSE PRICE AND UPDATE IN UTILITY FUNCTION
+                        # ALSO IMPLEMENT HERE AVERAGE HOUSE PRICE IN NEIGHBOURHOOD UPDATE
+                        # Money paid, based on the deviation from contentment score threshold
+                        # Transactions payed for houses
+                        buyer.cash -= (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
+                        seller.cash -= (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
+                        # Money earned, based on the deviation from contentment score threshold
+                        buyer.cash += (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
+                        seller.cash += (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
                         # Swapping houses
                         buyer_destination = seller.neighbourhood
                         seller_destination = buyer.neighbourhood
@@ -97,18 +112,16 @@ class Housing(mesa.Model):
                         # Updating statistics
                         self.deals += 1
                         seller.neighbourhood.moves += 1
-                        buyer.neighbourhood.moves += 1
-                        # As they already exchanged, they should not do it again
+                        # As they already exchanged, they should not do it again and we forget them
                         seller = None
                         buyer = None
-                        # Money paid, based on the deviation from contentment score threshold
-                        buyer.money -= (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
-                        seller.money -= (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
-                        # Money earned, based on the deviation from contentment score threshold
-                        buyer.money += (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
-                        seller.money += (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
                         
-                        
+        # Getting average contentment:
+        for agent in agents:
+            if isinstance(agent, Person): 
+                self.average_contentment += agent.contentment
+        self.average_contentment = self.average_contentment / self.population_size
+        # Probably STD is more interesting thing to visualize
 
         # Do something in neighbourhoods
         for agent in agents:

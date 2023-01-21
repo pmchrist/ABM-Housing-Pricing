@@ -1,34 +1,38 @@
-# Used in Schelling
 
-from server import server
-server.launch()
+debug = False
 
-from models import Housing
-from agents import Person, Neighbourhood
+# To run visualization
+if not debug:
+    from server import server
+    server.launch()
 
-# Some values for statistics at the end
-population = 0
-unhappy_population = 0
+if debug:
+    from models import Housing
+    from agents import Person, Neighbourhood
 
-# Run model for 10 steps
-model = Housing()
-for i in range(5):
-    model.step()
+    # Some values for statistics at the end
+    population = 0
+    unhappy_population = 0
 
-# Show who lives where (Was used for Debug)
-agents = model.schedule.agents
-for agent in agents:
-    if isinstance(agent, Neighbourhood): 
-        #print("Amount of people living: ", agent.capacity)
-        continue
-for agent in agents:
-    if isinstance(agent, Person): 
-        population += 1
-        if agent.contentment < agent.contentment_threshold:
-            unhappy_population += 1
+    # Run model for 10 steps
+    model = Housing()
+    for i in range(10):
+        model.step()
 
-print("Population: ", population)
-print("Unhappy Population %: ", unhappy_population/population)
+    # Show who lives where (Was used for Debug)
+    agents = model.schedule.agents
+    for agent in agents:
+        if isinstance(agent, Neighbourhood): 
+            #print("Amount of people living: ", agent.capacity)
+            continue
+    for agent in agents:
+        if isinstance(agent, Person): 
+            population += 1
+            if agent.contentment < agent.contentment_threshold:
+                unhappy_population += 1
+
+    print("Population: ", population)
+    print("Unhappy Population %: ", unhappy_population/population)
 
 
 # Some available stuff to access:
