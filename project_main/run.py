@@ -1,6 +1,7 @@
 # Used in Schelling
-#from server import server
-#server.launch()
+
+from server import server
+server.launch()
 
 from models import Housing
 from agents import Person, Neighbourhood

@@ -72,6 +72,7 @@ class Person(mesa.Agent):
 class Neighbourhood(mg.GeoAgent):
     def __init__(self, unique_id, model, geometry, crs):
         super().__init__(unique_id, model, geometry, crs)
+        self.moves = 0
         self.capacity = None
         self.param_1 = None
         self.param_2 = None

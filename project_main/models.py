@@ -17,12 +17,19 @@ import mesa_geo as mg
 # Model 
 class Housing(mesa.Model):
 
-    def __init__(self):
+    def __init__(self, weight_1, weight_2):
+        
+        # Variable Agent params for creation of model
+        self.weight_1 = weight_1    # If they are fixed, no exchanges are happening
+        self.weight_2 = weight_2    # If they are fixed, no exchanges are happening
+
+        self.deals = 0  # Amount of exchanges happening on each step
+        self.running = True
 
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
-        self.deals = 0  # Amount of exchanges happening on each step
         #self.datacollector = mesa.datacollection.DataCollector()
+        self.datacollector = mesa.DataCollector({"deals": "deals"})
 
         # Seting up Mesa Geo Agents
         # Set up the grid with patches for every region (Adding neighbourhood agents)
@@ -38,12 +45,13 @@ class Housing(mesa.Model):
             # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
             geo_agent.param_1 = random.random()
             geo_agent.param_2 = random.random()
-            geo_agent.capacity = random.randint(1, 10)
+            geo_agent.capacity = random.randint(10, 50)
             geo_agent.salary = random.randint(10,20)
             geo_agent.cost_of_living = random.randint(10,20)
             self.schedule.add(geo_agent)
             # Creating People and assigning them to a region
             for i in range(geo_agent.capacity):
+                # WEIGHTS ARE RANDOM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
                 person = Person(unique_id=k+i, model=self, weight_1=random.random(), weight_2=random.random(), starting_money=random.randint(100, 200), living_location=geo_agent)
                 self.schedule.add(person)
             # Update counter for People IDs
@@ -52,8 +60,9 @@ class Housing(mesa.Model):
 
     # Step for model, same as in simple mesa
     def step(self):
+        self.deals = 0  # Reset counter of deals
         self.schedule.step()    # runs step in Agents
-
+        
         # For each agent (Person) check if he wants to sell
         agents = self.schedule.agents
         sellers = []
@@ -63,7 +72,7 @@ class Housing(mesa.Model):
         # Manage housing market
         for seller in sellers:
             for buyer in sellers:
-                if buyer != seller:
+                if buyer != seller and buyer and seller:
                     new_seller_score = seller.calculate_contentment(buyer.neighbourhood)
                     new_buyer_score = buyer.calculate_contentment(seller.neighbourhood)
                     # Improve buyer seller matching, by getting all better offers, and choose from them
@@ -74,17 +83,25 @@ class Housing(mesa.Model):
                         seller_destination = buyer.neighbourhood
                         buyer.neighbourhood = buyer_destination
                         seller.neighbourhood = seller_destination
+                        # Updating statistics
                         self.deals += 1
+                        seller.neighbourhood.moves += 1
+                        buyer.neighbourhood.moves += 1
+                        # As they already exchanged, they should not do it again
+                        seller = None
+                        buyer = None
                         # Add money paid, based on the deviation from contentment score threshold
-        # Just showing amount of trades after current step
-        print(self.deals)
-        self.deals=0
 
         # Do something in neighbourhoods
         for agent in agents:
             if isinstance(agent, Neighbourhood): 
                 # Nothing for now
                break
+        
+        # Managing running of simulator and setting next turn
+        if self.deals == 0:
+            self.running = False
+        self.datacollector.collect(self)
         
         return
 

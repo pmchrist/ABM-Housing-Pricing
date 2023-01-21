@@ -6,10 +6,11 @@ import xyzservices.providers as xyz
 import mesa
 import mesa_geo as mg
 
-from models import GeoSchelling
+from models import Housing
+from agents import Person, Neighbourhood
 
 
-class HappyElement(mesa.visualization.TextElement):
+class HousingElement(mesa.visualization.TextElement):
     """
     Display a text count of how many happy agents there are.
     """
@@ -18,13 +19,12 @@ class HappyElement(mesa.visualization.TextElement):
         pass
 
     def render(self, model):
-        return "Happy agents: " + str(model.happy)
+        return "Amount of Deals: " + str(model.deals)
 
 
 model_params = {
-    "density": mesa.visualization.Slider("Agent density", 0.6, 0.1, 1.0, 0.1),
-    "minority_pc": mesa.visualization.Slider("Fraction minority", 0.2, 0.00, 1.0, 0.05),
-    "export_data": mesa.visualization.Checkbox("Export data after simulation", False),
+    "weight_1": mesa.visualization.Slider("Weight_1", 0.5, 0.1, 1.0, 0.1),
+    "weight_2": mesa.visualization.Slider("Weight_2", 0.5, 0.1, 1.0, 0.1)
 }
 
 
@@ -33,20 +33,23 @@ def schelling_draw(agent):
     Portrayal Method for canvas
     """
     portrayal = dict()
-    if agent.atype is None:
-        portrayal["color"] = "Grey"
-    elif agent.atype == 0:
-        portrayal["color"] = "Red"
-    else:
-        portrayal["color"] = "Blue"
+    if isinstance(agent, Neighbourhood):
+        if agent.moves > 60:
+            portrayal["color"] = "Red"
+        elif agent.moves > 20:
+            portrayal["color"] = "Orange"
+        elif agent.moves > 5:
+            portrayal["color"] = "Blue"
+        else:
+            portrayal["color"] = "Grey"
     return portrayal
 
 
-happy_element = HappyElement()
+housing_element = HousingElement()
 map_element = mg.visualization.MapModule(
     schelling_draw, [52.3676, 4.9041], 11, tiles=xyz.CartoDB.Positron
 )
-happy_chart = mesa.visualization.ChartModule([{"Label": "happy", "Color": "Black"}])
+happy_chart = mesa.visualization.ChartModule([{"Label": "deals", "Color": "Black"}])
 server = mesa.visualization.ModularServer(
-    GeoSchelling, [map_element, happy_element, happy_chart], "Schelling", model_params
+    Housing, [map_element, housing_element, happy_chart], "Housing Market", model_params
 )
