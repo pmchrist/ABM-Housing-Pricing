@@ -13,10 +13,10 @@ class Person(mesa.Agent):
 
         Args:
             unique_id: Unique identifier for the agent.
-            money: Initial amount of money the agent has.
             weight_1: Weight for Contentness function.
             weight_2: Weight for Contentness function.
-            living_location: Current living location of the agent.
+            starting_money: Initial amount of money the agent has.
+            living_location: Current living neighbourhood of the agent.
             contentness_threshold: Threshold for agent to start selling the house.
         """
         
@@ -44,7 +44,6 @@ class Person(mesa.Agent):
             return True
         else:
             return False
-
 
     def update_attributes(self):
         """Updates the agents attributes after every step."""
@@ -77,6 +76,7 @@ class Neighbourhood(mg.GeoAgent):
         self.param_2 = None
         self.salary = None
         self.cost_of_living = None
+        self.average_house_price = None
 
     def step(self):
         """

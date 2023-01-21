@@ -12,18 +12,25 @@ import mesa
 import mesa_geo as mg
 
 
-
-# Our main model class
 # Model 
 class Housing(mesa.Model):
+    """Model class for the housing market model."""
 
     def __init__(self):
+        """Create a model for the housing market.
 
+        Attributes:
+            schedule: The scheduler for the model.
+            space: The spatial environment for the model.
+            deals: The amount of exchanges happening on each step.
+        """
+
+        # Attributes
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
-        self.deals = 0  # Amount of exchanges happening on each step
+        self.deals = 0
         #self.datacollector = mesa.datacollection.DataCollector()
-
+        
         # Seting up Mesa Geo Agents
         # Set up the grid with patches for every region (Adding neighbourhood agents)
         f = open('Amsterdam_map_from_github.geojson')
@@ -31,6 +38,7 @@ class Housing(mesa.Model):
         neighbourhood_Agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
         neighbourhoods = neighbourhood_Agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
         self.space.add_agents(neighbourhoods)
+
         # Set up Neighbourhoods with People
         k = 0   # needed for counter to keep correct People IDs
         for geo_agent in neighbourhoods:
@@ -41,6 +49,7 @@ class Housing(mesa.Model):
             geo_agent.capacity = random.randint(1, 10)
             geo_agent.salary = random.randint(10,20)
             geo_agent.cost_of_living = random.randint(10,20)
+            self.average_house_price = random.randint(100,200)
             self.schedule.add(geo_agent)
             # Creating People and assigning them to a region
             for i in range(geo_agent.capacity):
@@ -49,10 +58,11 @@ class Housing(mesa.Model):
             # Update counter for People IDs
             k += geo_agent.capacity
 
-
     # Step for model, same as in simple mesa
     def step(self):
-        self.schedule.step()    # runs step in Agents
+        """Advance the model by one step.""" 
+
+        self.schedule.step() # runs step in Agents
 
         # For each agent (Person) check if he wants to sell
         agents = self.schedule.agents
@@ -60,14 +70,16 @@ class Housing(mesa.Model):
         for agent in agents:
             if isinstance(agent, Person): 
                 if agent.selling: sellers.append(agent)
-        # Manage housing market
+
+        # Find potential trades
         for seller in sellers:
             for buyer in sellers:
                 if buyer != seller:
+                    # Calculate contentment for both parties in potential new neighbourhoods
                     new_seller_score = seller.calculate_contentment(buyer.neighbourhood)
                     new_buyer_score = buyer.calculate_contentment(seller.neighbourhood)
                     # Improve buyer seller matching, by getting all better offers, and choose from them
-                    # If a person for whom exchanges also improves contentment, swap houses
+                    # If both parties are happy with the deal, swap houses
                     if new_buyer_score > buyer.contentment and new_seller_score > seller.contentment:
                         # Swapping houses
                         buyer_destination = seller.neighbourhood
@@ -75,7 +87,14 @@ class Housing(mesa.Model):
                         buyer.neighbourhood = buyer_destination
                         seller.neighbourhood = seller_destination
                         self.deals += 1
-                        # Add money paid, based on the deviation from contentment score threshold
+                        # Money paid, based on the deviation from contentment score threshold
+                        buyer.money -= (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
+                        seller.money -= (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
+                        # Money earned, based on the deviation from contentment score threshold
+                        buyer.money += (1 + new_seller_score - seller.contentment) * seller.neighbourhood.average_house_price
+                        seller.money += (1 + new_buyer_score - buyer.contentment) * buyer.neighbourhood.average_house_price
+                        
+                        
         # Just showing amount of trades after current step
         print(self.deals)
         self.deals=0
