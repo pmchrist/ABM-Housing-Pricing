@@ -32,7 +32,6 @@ class Housing(mesa.Model):
         self.population_size = 0   # needed for counter to keep correct People IDs
         self.average_contentment = 0    # Average contentment in Agents
         self.deals = 0  # Amount of exchanges happening on each step
-        self.running = True
 
         # Attributes
         self.schedule = mesa.time.RandomActivationByType(self)
@@ -69,6 +68,8 @@ class Housing(mesa.Model):
             self.population_size += geo_agent.capacity
         self.average_contentment = self.average_contentment/self.population_size
         #print("Init Average Contentment: ", self.average_contentment)
+        self.running = True
+        self.datacollector.collect(self)
 
     # Step for model, same as in simple mesa
     def step(self):
@@ -76,8 +77,8 @@ class Housing(mesa.Model):
 
         self.deals = 0  # Reset counter of deals
         self.average_contentment = 0
-        self.schedule.step() # runs step in Agents
         
+        # Working with People
         # For each agent (Person) check if he wants to sell
         agents = self.schedule.agents
         sellers = []
@@ -115,29 +116,31 @@ class Housing(mesa.Model):
                         # As they already exchanged, they should not do it again and we forget them
                         seller = None
                         buyer = None
-                        
+
+        # Working with Neighbourhoods
+        for agent in agents:
+            if isinstance(agent, Neighbourhood): 
+                # Nothing for now
+               break        
+
+        # Advancing All Agents for one step
+        self.schedule.step() # runs step in Agents to update values based on new neighbourhood
+
+        # Getting stats for visualization
         # Getting average contentment:
         for agent in agents:
-            if isinstance(agent, Person): 
+            if isinstance(agent, Person):
                 self.average_contentment += agent.contentment
         self.average_contentment = self.average_contentment / self.population_size
         # Probably STD is more interesting thing to visualize
 
-        # Do something in neighbourhoods
-        for agent in agents:
-            if isinstance(agent, Neighbourhood): 
-                # Nothing for now
-               break
-        
+        self.datacollector.collect(self)
+
         # Managing running of simulator and setting next turn
         if self.deals == 0:
             self.running = False
-        self.datacollector.collect(self)
-        
+
         return
-
-
-
 
 
 
