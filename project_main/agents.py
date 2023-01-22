@@ -8,7 +8,7 @@ import mesa_geo as mg
 class Person(mesa.Agent):
     """Housing market agent (a Person living in the city)"""
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent, contentment_threshold=0.4):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -24,7 +24,7 @@ class Person(mesa.Agent):
         # Parameters that depend only on the agent (are init on creation of a person)
         self.weight_1 = weight_1    # Weight for Contentment function
         self.weight_2 = weight_2    # Weight for Contentment function
-        self.contentment_threshold = 0.4    # If contentment drops under, person wants to sell his house(0.4 is just for example)
+        self.contentment_threshold = contentment_threshold   # If contentment drops under, person wants to sell his house(0.4 is just for example)
         # Parameters that depend on the initial neighbourhood (are assigned on init of neighbourhood)
         self.cash = starting_money
         self.neighbourhood = living_location
@@ -61,7 +61,7 @@ class Person(mesa.Agent):
     def step(self):
         """Advance agent one step."""
 
-        # Update Agent's social status and Contentment
+        # Update Agent's net income and Contentment
         self.update_attributes()
 
    
@@ -79,13 +79,17 @@ class Neighbourhood(mg.GeoAgent):
         self.cost_of_living = None
         self.average_house_price = None
 
+    def noise(self):
+        '''Add stochastic noise to param_1 and params_2.'''
+        sigma = 0.0
+        self.param_1 = random.gauss(self.param_1, sigma)
+        self.param_2 = random.gauss(self.param_2, sigma)
+
     def step(self):
         """
-        Nothing for now, however, we might want to add some stochastic noise here to param_1 and params_2.
-        Instead of decreasing gradually weights for boredom in Agent, we should simulate change in region, random walker for params.
-        As it is more realistic for region to change randomly. It is random as for us these dynamics are just noise and not point of simulation.
+        Advance neighbourhood one step.
         """
-        return
+        self.noise()
 
 
 
