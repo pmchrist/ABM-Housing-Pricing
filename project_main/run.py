@@ -1,5 +1,5 @@
 
-debug = False
+debug = True
 
 # To run visualization
 if not debug:
