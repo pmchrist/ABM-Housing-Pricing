@@ -81,10 +81,10 @@ class Housing(mesa.Model):
                 self.schedule.add(person)
 
                 # Assign houses to each of the Person agents
-                house = House(  unique_id=self.population_size+i+10000, 
+                house = House(  unique_id=self.population_size+i+10000, # FIND BETTER WAY FOR ID ASSIGNMENT
                                 model=self, 
                                 neighbourhood=neighbourhood, 
-                                price=neighbourhood.average_house_price, 
+                                price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
                                 owner=person,
                                 geometry=neighbourhood.geometry,
                                 crs=neighbourhood.crs)
@@ -103,22 +103,28 @@ class Housing(mesa.Model):
         # Collecting data   
         self.datacollector.collect(self)
 
-    # Step for model, same as in simple mesa
-    def step(self):
-        """Advance the model by one step.""" 
+    def find_sellers(self, agents):
+        """
+        Finds all Person agents that are willing to sell their houses.
 
-        self.deals = 0  # Reset counter of deals
-        self.average_contentment = 0
-        
-        # Working with People
-        # For each agent (Person) check if he wants to sell
-        agents = self.schedule.agents
+        Args:
+            agents: List of all agents in the model.
+        """
+
         sellers = []
         for agent in agents:
             if isinstance(agent, Person): 
                 if agent.selling: sellers.append(agent)
+        return sellers
 
-        # Find potential trades
+    def auction(self, sellers):
+        """
+        Performs trades between agents that are willing to sell.
+
+        Args:
+            sellers: List of agents that are willing to sell.
+        """
+
         for seller in sellers:
             for buyer in sellers:
                 if buyer != seller and buyer is not None and seller is not None:
@@ -149,15 +155,8 @@ class Housing(mesa.Model):
                         seller = None
                         buyer = None
 
-        # Working with Neighbourhoods
-        for agent in agents:
-            if isinstance(agent, Neighbourhood): 
-                # Nothing for now
-               break        
-
-        # Advancing All Agents for one step
-        self.schedule.step() # runs step in Agents to update values based on new neighbourhood
-
+    def update_statistics(self, agents):
+        """Updates statistics for the model."""
         # Getting stats for visualization
         # Getting average contentment:
         for agent in agents:
@@ -166,10 +165,44 @@ class Housing(mesa.Model):
         self.average_contentment = self.average_contentment / self.population_size
         # Probably STD is more interesting thing to visualize
 
-        self.datacollector.collect(self)
+    def equilibrium(self):
+        """Checks if the model has reached equilibrium."""
 
-        # Managing running of simulator and setting next turn
+        # Check if there are no more deals
         if self.deals == 0:
             self.running = False
+        else:
+            self.running = True
+
+    # Step for model, same as in simple mesa
+    def step(self):
+        """
+        Advance the model by one step.
+        """ 
+        # Resetting deals counter and average_contentment
+        self.deals = 0
+        self.average_contentment = 0
+
+        # Getting all agents
+        agents = self.schedule.agents
+        # Find all agents that are willing to sell
+        sellers = self.find_sellers(agents)
+        # Perfrom house trades
+        self.auction(sellers)
+
+        # Working with Neighbourhoods
+        for agent in agents:
+            if isinstance(agent, Neighbourhood): 
+                # Nothing for now
+               break        
+
+        # Advance all Agents by one step
+        self.schedule.step() # runs step in Agents to update values based on new neighbourhood
+        # Updating statistics
+        self.update_statistics(agents)
+        # Collecting data
+        self.datacollector.collect(self)
+        # Managing running of simulator and setting next turn
+        self.equilibrium()
 
         return

@@ -3,7 +3,9 @@ import mesa
 import mesa_geo as mg
 
 class Person(mesa.Agent):
-    """Agent representing a person on the housing market of the city."""
+    """
+    Agent representing a person on the housing market of the city.
+    """
 
     def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent, contentment_threshold=0.4):
         """Create a new agent (person) for the housing market.
@@ -62,14 +64,18 @@ class Person(mesa.Agent):
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
-        """Advance agent one step."""
+        """
+        Advance agent one step.
+        """
 
         # Update Agent's net income and Contentment
         self.update_attributes()
 
    
 class Neighbourhood(mg.GeoAgent):
-    """GeoAgent representing a neighbourhood in the city."""
+    """
+    GeoAgent representing a neighbourhood in the city.
+    """
 
     def __init__(self, unique_id: str, model: mesa.Model, geometry, crs):
         """Create a new neighbourhood.
@@ -117,13 +123,11 @@ class Neighbourhood(mg.GeoAgent):
 
 
 class House(mg.GeoAgent):
-# class House(mesa.Agent):
     """
     GeoAgent representing a house in a neighbourhood.
     """
     # I THINK WE NEED INCLUDE GEOMETRY AND CRS IN FINAL VERSION FOR VISUALISATION
     def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person, geometry, crs):
-    # def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person):
         """
         Create a new house.
         
@@ -139,13 +143,20 @@ class House(mg.GeoAgent):
         """
 
         super().__init__(unique_id, model, geometry, crs)
-        # super().__init__(unique_id, model)
 
         self.neighbourhood = neighbourhood
         self.price = price
         self.owner = owner
-        self.is_red = None # attribute determining the color of the house
+        # self.is_red = None # attribute determining the color of the house
+
+    def inflation(self):
+        """Gradually increases the price of the house."""
+
+        self.price = self.price * 1.01
 
     def step(self):
-        pass
+        """
+        Advance house one step.
+        """
+        self.inflation()
     
