@@ -15,7 +15,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing()
+    model = Housing(num_people=100, num_houses=100, weight_1=1.0, weight_2=1.0)
     for i in range(10):
         model.step()
 
@@ -36,7 +36,6 @@ if debug:
 
 
 # Some available stuff to access:
-#
 #agent.geometry
 #agent.Oppervlakte_m2
 ## Available Params
@@ -46,6 +45,7 @@ if debug:
 ## Neighbour Regions
 #neighbors = m.space.get_neighbors(agent)
 #print([a.unique_id for a in neighbors])
+
 ## Regioins in close space
 #print([a.unique_id for a in m.space.get_neighbors_within_distance(agent, 500)])
 

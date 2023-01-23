@@ -1,9 +1,9 @@
 # File that handles model interaction
 # We should also manage all the data imports here (as they are part of neighbourhood init)
 
-from agents import Neighbourhood
 from agents import Person
-from agents import SchellingAgent
+from agents import Neighbourhood
+from agents import House
 
 import random
 import json
@@ -14,9 +14,16 @@ import mesa_geo as mg
 
 # Model 
 class Housing(mesa.Model):
+    """A Mesa model for housing market."""
 
-    def __init__(self, weight_1, weight_2):
+    def __init__(self, num_people, num_houses, weight_1, weight_2):
         """Create a model for the housing market.
+
+        Args:
+            num_people: Number of people in the model.
+            num_houses: Number of houses in the model.
+            weight_1: Weight of the first parameter in the contentment function.
+            weight_2: Weight of the second parameter in the contentment function.
 
         Attributes:
             schedule: The scheduler for the model.
@@ -24,51 +31,76 @@ class Housing(mesa.Model):
             deals: The amount of exchanges happening on each step.
         """
         
-        # Variable Agent params for creation of model
-        self.weight_1 = weight_1    # If they are fixed, no exchanges are happening
-        self.weight_2 = weight_2    # If they are fixed, no exchanges are happening
+        # Variables representing agents preferences
+        self.weight_1 = weight_1
+        self.weight_2 = weight_2
 
-        # Running statistics of the model
-        self.population_size = 0   # needed for counter to keep correct People IDs
-        self.average_contentment = 0    # Average contentment in Agents
-        self.deals = 0  # Amount of exchanges happening on each step
+        # Variables for keeping track of statistics of the model
+        self.population_size = 0 # Counter for assiging People IDs
+        self.average_contentment = 0 # Average contentment of all agents
+        self.deals = 0  # Counter for amount of trades happening on each step
 
         # Attributes
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
         self.datacollector = mesa.DataCollector({"Deals": "deals", "Average Contentment": "average_contentment"})
 
-        # Seting up Mesa Geo Agents
-        # Set up the grid with patches for every region (Adding neighbourhood agents)
+        # Variable for stopping the model when equilibirum is reached.
+        self.running = True
+
+        # Seting up GeoAgents for neighbourhoods
         f = open('Amsterdam_map_from_github.geojson')
         geojson_states = json.load(f)
-        neighbourhood_Agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
-        neighbourhoods = neighbourhood_Agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
+        neighbourhood_agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
+        neighbourhoods = neighbourhood_agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
         self.space.add_agents(neighbourhoods)
 
-        # Set up Neighbourhoods with People
-        for geo_agent in neighbourhoods:
-            # Init each neighbourhood with their parameters
+        # Assign neighbourhoods to each of the Person agents
+        for neighbourhood in neighbourhoods:
+
+            # Initialize each Neighbourhood with their corresponding values
             # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
-            geo_agent.param_1 = random.random()
-            geo_agent.param_2 = random.random()
-            geo_agent.capacity = random.randint(10, 50)
-            geo_agent.salary = random.randint(10,20)
-            geo_agent.cost_of_living = random.randint(10,20)
-            geo_agent.average_house_price = random.randint(50,150)
-            self.schedule.add(geo_agent)
-            # Creating People and assigning them to a region
-            for i in range(geo_agent.capacity):
-                # WEIGHTS ARE RANDOM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
-                person = Person(unique_id=self.population_size+i, model=self, weight_1=random.random(), weight_2=random.random(), starting_money=random.randint(200, 500), living_location=geo_agent)
+            neighbourhood.param_1 = random.random()
+            neighbourhood.param_2 = random.random()
+            neighbourhood.capacity = random.randint(1, 5)
+            neighbourhood.salary = random.randint(10,20)
+            neighbourhood.cost_of_living = random.randint(10,20)
+            neighbourhood.average_house_price = random.randint(50,150)
+            # Add neighbourhood to schedule
+            self.schedule.add(neighbourhood)
+
+            # Create People and assign them to a Neighbourhood
+            for i in range(1, neighbourhood.capacity):
+                # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
+                person = Person(unique_id=self.population_size+i, 
+                                model=self, 
+                                weight_1=random.random(), 
+                                weight_2=random.random(), 
+                                starting_money=random.randint(200, 500), 
+                                living_location=neighbourhood)
                 self.schedule.add(person)
+
+                # Assign houses to each of the Person agents
+                house = House(  unique_id=self.population_size+i+10000, 
+                                model=self, 
+                                neighbourhood=neighbourhood, 
+                                price=neighbourhood.average_house_price, 
+                                owner=person,
+                                geometry=neighbourhood.geometry,
+                                crs=neighbourhood.crs)
+                self.schedule.add(house)
+
                 # Upadating contentment for the init
                 self.average_contentment += person.contentment
+
             # Update counter for People IDs
-            self.population_size += geo_agent.capacity
-        self.average_contentment = self.average_contentment/self.population_size
-        #print("Init Average Contentment: ", self.average_contentment)
-        self.running = True
+            self.population_size += neighbourhood.capacity
+            
+        # Calculate average contentment
+        self.average_contentment = self.average_contentment / self.population_size
+        print("Initial Average Contentment: ", self.average_contentment)
+
+        # Collecting data   
         self.datacollector.collect(self)
 
     # Step for model, same as in simple mesa
@@ -141,60 +173,3 @@ class Housing(mesa.Model):
             self.running = False
 
         return
-
-
-
-
-# Model Example
-class GeoSchelling(mesa.Model):
-    """Model class for the Schelling segregation model."""
-
-    # Basically, we can pass anything here, width, height and init population are given by map and neighbourhouds amount (in current case)
-    def __init__(self, density=0.6, minority_pc=0.2, export_data=False):
-        self.density = density
-        self.minority_pc = minority_pc
-        self.export_data = export_data
-
-        self.schedule = mesa.time.RandomActivation(self)
-        self.space = mg.GeoSpace(warn_crs_conversion=False)
-
-        self.happy = 0
-        self.datacollector = mesa.DataCollector({"happy": "happy"})
-
-        self.running = True
-
-        # Set up the grid with patches for every region
-        ac = mg.AgentCreator(SchellingAgent, model=self)
-        agents = ac.from_file("Amsterdam_map_from_github.geojson")
-        self.space.add_agents(agents)
-
-        # Set up agents
-        for agent in agents:
-            if random.random() < self.density:
-                if random.random() < self.minority_pc:
-                    agent.atype = 1
-                else:
-                    agent.atype = 0
-                self.schedule.add(agent)
-
-    # No idea, some export for visualization, I guess
-    def export_agents_to_file(self) -> None:
-        self.space.get_agents_as_GeoDataFrame(agent_cls=SchellingAgent).to_crs(
-            "epsg:4326"
-        ).to_file("data/schelling_agents.geojson", driver="GeoJSON")
-
-    # Step for model, same as in simple mesa
-    def step(self):
-        """Run one step of the model.
-
-        If All agents are happy, halt the model.
-        """
-        self.happy = 0  # Reset counter of happy agents
-        self.schedule.step()
-        self.datacollector.collect(self)
-
-        if self.happy == self.schedule.get_agent_count():
-            self.running = False
-
-        if not self.running and self.export_data:
-            self.export_agents_to_file()
