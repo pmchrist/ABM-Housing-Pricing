@@ -49,7 +49,7 @@ class Housing(mesa.Model):
         self.running = True
 
         # Seting up GeoAgents for neighbourhoods
-        f = open('Amsterdam_map_from_github.geojson')
+        f = open('../data/Amsterdam_map_from_github.geojson')
         geojson_states = json.load(f)
         neighbourhood_agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
         neighbourhoods = neighbourhood_agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset

@@ -1,6 +1,5 @@
 # README:
 # No idea for now how it works. Basically handles visualization only
-
 import xyzservices.providers as xyz
 
 import mesa
@@ -8,7 +7,6 @@ import mesa_geo as mg
 
 from models import Housing
 from agents import Person, Neighbourhood
-
 
 class HousingElement(mesa.visualization.TextElement):
     """
@@ -20,7 +18,6 @@ class HousingElement(mesa.visualization.TextElement):
 
     def render(self, model):
         return "Amount of Deals: " + str(model.deals)
-
 
 model_params = {
     "weight_1": mesa.visualization.Slider("Weight_1", 0.5, 0.1, 1.0, 0.1),
