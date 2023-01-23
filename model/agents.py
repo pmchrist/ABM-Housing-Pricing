@@ -34,14 +34,22 @@ class Person(mesa.Agent):
         # Parameters that are dynamic and re-calculated on each step().
         self.contentment = self.calculate_contentment(self.neighbourhood)
         self.selling = self.get_selling_status()
+        self.house = None
 
     def calculate_contentment(self, neighbourhood):
-        """Updates the contentness score of the agent."""
+        """
+        Updates the contentness score of the agent.
+        
+        Args:
+            neighbourhood: The neighbourhood the agent is currently living in.
+        """
         # THIS IS A TEST FORMULA, SHOULD BE BASED ON NEIGHBOURHOOD DATA
         return self.weight_1 * neighbourhood.param_1 + self.weight_2 * neighbourhood.param_2
 
     def get_selling_status(self):
-        """Updates the house selling status of the agent."""
+        """
+        Updates the house selling status of the agent.
+        """
 
         if self.contentment < self.contentment_threshold:
             return True
@@ -49,7 +57,9 @@ class Person(mesa.Agent):
             return False
 
     def update_attributes(self):
-        """Updates the agents attributes after every step."""
+        """
+        Updates the agents attributes after every step.
+        """
         # Decreasing gradually to reflect boredom from neighbourhood
         #self.weight_1 = self.weight_1 * .95 # If we use these params in the final verson, we should also reset them after each move
         #self.weight_2 = self.weight_2 * .95
@@ -78,7 +88,8 @@ class Neighbourhood(mg.GeoAgent):
     """
 
     def __init__(self, unique_id: str, model: mesa.Model, geometry, crs):
-        """Create a new neighbourhood.
+        """
+        Create a new neighbourhood.
         
         Args:
             unique_id: Unique identifier for the agent, or neigbourhood name.
@@ -95,9 +106,12 @@ class Neighbourhood(mg.GeoAgent):
         self.salary = None # average salary in this neighbourhood
         self.cost_of_living = None # average cost of living in this neighbourhood
         self.average_house_price = None # average house price in this neighbourhood
+        self.houses = [] # list of houses in this neighbourhood
 
     def growth(self):
-        """Gradually increses attributes of neigbouhood."""
+        """
+        Gradually increses attributes of neigbouhood.
+        """
         
         self.salary = self.salary * 1.01
         self.cost_of_living =  self.cost_of_living * 1.01
@@ -107,7 +121,9 @@ class Neighbourhood(mg.GeoAgent):
         # self.capacity = self.capacity * 1.01
 
     def noise(self):
-        """Add stochastic noise to param_1 and params_2."""
+        """
+        Add stochastic noise to param_1 and params_2.
+        """
 
         sigma = 0.0
         self.param_1 = self.param_1 + random.uniform(-sigma, sigma)
@@ -126,7 +142,6 @@ class House(mg.GeoAgent):
     """
     GeoAgent representing a house in a neighbourhood.
     """
-    # I THINK WE NEED INCLUDE GEOMETRY AND CRS IN FINAL VERSION FOR VISUALISATION
     def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person, geometry, crs):
         """
         Create a new house.
@@ -149,8 +164,16 @@ class House(mg.GeoAgent):
         self.owner = owner
         # self.is_red = None # attribute determining the color of the house
 
+        # Assign house to Person agent
+        owner.house = self
+
+        # Assign house to Neighbourhood agent
+        self.neighbourhood.houses.append(self)
+
     def inflation(self):
-        """Gradually increases the price of the house."""
+        """
+        Gradually increases the price of the house.
+        """
 
         self.price = self.price * 1.01
 
@@ -158,5 +181,6 @@ class House(mg.GeoAgent):
         """
         Advance house one step.
         """
+
         self.inflation()
     

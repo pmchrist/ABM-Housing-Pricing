@@ -7,7 +7,7 @@ if not debug:
     server.launch()
 
 if debug:
-    from models import Housing
+    from model import Housing
     from agents import Person, Neighbourhood
 
     # Some values for statistics at the end
