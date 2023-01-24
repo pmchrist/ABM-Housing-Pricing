@@ -1,11 +1,9 @@
-# README:
-# No idea for now how it works. Basically handles visualization only
 import xyzservices.providers as xyz
 
 import mesa
 import mesa_geo as mg
 
-from models import Housing
+from model import Housing
 from agents import Person, Neighbourhood
 
 class HousingElement(mesa.visualization.TextElement):
@@ -19,9 +17,15 @@ class HousingElement(mesa.visualization.TextElement):
     def render(self, model):
         return "Amount of Deals: " + str(model.deals)
 
+
+# Parameters of the model
 model_params = {
     "weight_1": mesa.visualization.Slider("Weight_1", 0.5, 0.1, 1.0, 0.1),
-    "weight_2": mesa.visualization.Slider("Weight_2", 0.5, 0.1, 1.0, 0.1)
+    "weight_2": mesa.visualization.Slider("Weight_2", 0.5, 0.1, 1.0, 0.1),
+    "num_people": 100,
+    "num_houses": 100,
+    "contentment_threshold": 0.5,
+    "noise": 0.0
 }
 
 
@@ -31,11 +35,11 @@ def schelling_draw(agent):
     """
     portrayal = dict()
     if isinstance(agent, Neighbourhood):
-        if agent.moves > 60:
+        if agent.moves > 40:
             portrayal["color"] = "Red"
-        elif agent.moves > 20:
+        elif agent.moves > 10:
             portrayal["color"] = "Orange"
-        elif agent.moves > 5:
+        elif agent.moves > 2:
             portrayal["color"] = "Blue"
         else:
             portrayal["color"] = "Grey"
