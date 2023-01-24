@@ -113,6 +113,7 @@ class Neighbourhood(mg.GeoAgent):
         self.avarage_salary = None
         self.cost_of_living = None
         self.average_house_price = None
+        self.average_house_price_history = []
         self.houses = []
 
     def growth(self):
@@ -169,11 +170,13 @@ class House(mg.GeoAgent):
 
         self.neighbourhood = neighbourhood
         self.price = price
+        self.price_history = [price]
         self.owner = owner
         # self.is_red = None # attribute determining the color of the house
 
         # Assign house to Person agent
         owner.house = self
+
 
         # Assign house to Neighbourhood agent
         self.neighbourhood.houses.append(self)

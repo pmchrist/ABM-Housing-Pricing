@@ -178,12 +178,19 @@ class Housing(mesa.Model):
         """
         
         # Detrmine price of houses
-        s1_price = (1 + new_s1_score - s1.contentment) * s1.neighbourhood.average_house_price # Money paid, based on the deviation from contentment score threshold
-        s2_price = (1 + new_s2_score - s2.contentment) * s2.neighbourhood.average_house_price
-        
+        # LOOK AT THIS
+        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price # Money paid, based on the deviation from contentment score threshold
+        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
+
+        # Update House prices and history
+        s1.house.price = house1_price
+        s2.house.price = house2_price
+        s1.house.price_history.append(house1_price)
+        s2.house.price_history.append(house2_price)
+
         # Cash transaction
-        s1.cash += s1_price - s2_price
-        s2.cash += s2_price - s1_price
+        s1.cash += house1_price - house2_price
+        s2.cash += house2_price - house1_price
 
         # Swapping neighbourhoods
         s1_destination = s2.neighbourhood
@@ -228,6 +235,7 @@ class Housing(mesa.Model):
                 price_sum += house.price
                 houses_num += 1
             neighbourhood.average_house_price = price_sum / houses_num
+            neighbourhood.average_house_price_history.append(neighbourhood.average_house_price)
 
     def auction(self, sellers):
         """
@@ -299,12 +307,6 @@ class Housing(mesa.Model):
 
         # Perfrom house trades
         self.auction(sellers)
-
-        # Working with Neighbourhoods
-        for agent in agents:
-            if isinstance(agent, Neighbourhood): 
-                # Nothing for now
-               break        
 
         # Advance all Agents by one step
         self.schedule.step() # runs step in Agents to update values based on new neighbourhood
