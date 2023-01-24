@@ -1,0 +1,5 @@
+Numpy==1.24.1
+Cython==0.29.33
+Mesa==1.1.1
+Mesa_Geo==0.4.0
+xyzservices==2022.9.0
