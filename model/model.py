@@ -13,20 +13,24 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_people, num_houses, weight_1, weight_2):
+    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, weight_1: float, weight_2: float):
         """
         Create a model for the housing market.
 
         Args:
             num_people: Number of people in the model.
             num_houses: Number of houses in the model.
+            noise: Noise term added to the parameters of a neighbourhood.
+            contentment_threshold: Threshold for agent to start selling the house.
             weight_1: Weight of the first parameter in the contentment function.
             weight_2: Weight of the second parameter in the contentment function.
 
         Attributes:
+            deals: The amount of exchanges happening on each step.
             schedule: The scheduler for the model.
             space: The spatial environment for the model.
-            deals: The amount of exchanges happening on each step.
+            datacollector: The datacollector for the model.
+            running: Boolean for stopping the model when equilibrium is reached.
         """
         
         # Variables representing agents preferences
@@ -39,6 +43,8 @@ class Housing(mesa.Model):
         self.deals = 0  # Counter for amount of trades happening on each step
 
         # Attributes
+        self.contentment_threshold = contentment_threshold
+        self.noise = noise
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
         self.datacollector = mesa.DataCollector({"Deals": "deals", "Average Contentment": "average_contentment"})
@@ -46,45 +52,92 @@ class Housing(mesa.Model):
         # Variable for stopping the model when equilibirum is reached.
         self.running = True
 
+        # Set up the model
+        self.setup_environment(num_people, num_houses)
+
+    def load_neighbourhood_data(self, neighbourhood):
+        """
+        Loads the data from the neighbourhoods dataset.
+
+        Args:
+            neighbourhood: The neighbourhood to load the data for.
+        """
+
+        # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
+        neighbourhood.param_1 = random.random()
+        neighbourhood.param_2 = random.random()
+        neighbourhood.capacity = random.randint(1, 5)
+        neighbourhood.avarage_salary = random.randint(10,20)
+        neighbourhood.cost_of_living = random.randint(10,20)
+        neighbourhood.average_house_price = random.randint(50,150)
+        self.schedule.add(neighbourhood)
+
+    def add_neighbourhoods(self, fn='../data/Amsterdam_map_from_github.geojson'):
+        """
+        Adds Neighbourhood agents to the model.
+
+        Args:
+            fn: The path to the GeoJSON file containing the neighbourhoods.
+        """
+
         # Seting up GeoAgents for neighbourhoods
-        f = open('../data/Amsterdam_map_from_github.geojson')
-        geojson_states = json.load(f)
+        geojson_states = json.load(open(fn))
         neighbourhood_agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
         neighbourhoods = neighbourhood_agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
         self.space.add_agents(neighbourhoods)
 
-        # Assign neighbourhoods to each of the Person agents
+        return neighbourhoods
+
+    def add_person_and_house(self, id, neighbourhood):
+        """
+        Adds a Person and a House agent to the model.
+
+        Args:
+            id: The id of the Person and House agent.
+            neighbourhood: The neighbourhood the agents are assigned to.
+        """
+
+        # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
+        person = Person(unique_id="Person_"+str(self.population_size+id), 
+                        model=self, 
+                        weight_1=random.random(), 
+                        weight_2=random.random(), 
+                        starting_money=random.randint(200, 500), 
+                        living_location=neighbourhood)
+        self.schedule.add(person)
+
+        # Assign houses to each of the Person agents
+        house = House(  unique_id="House_"+str(self.population_size+id), # FIND BETTER WAY FOR ID ASSIGNMENT
+                        model=self, 
+                        neighbourhood=neighbourhood, 
+                        price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
+                        owner=person,
+                        geometry=neighbourhood.geometry,
+                        crs=neighbourhood.crs)
+        self.schedule.add(house)
+
+        return person, house
+
+    
+    def setup_environment(self, num_people, num_houses):
+        """
+        Adds Neighbourhoods, Persons, and Houses agents to the model.
+
+        Args:
+            num_people: Number of people in the model.
+            num_houses: Number of houses in the model.
+        """
+
+        # Add Neighbourhoods GeoAgents to the model
+        neighbourhoods = self.add_neighbourhoods()
+
         for neighbourhood in neighbourhoods:
-            # Initialize each Neighbourhood with their corresponding values
-            # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
-            neighbourhood.param_1 = random.random()
-            neighbourhood.param_2 = random.random()
-            neighbourhood.capacity = random.randint(1, 5)
-            neighbourhood.salary = random.randint(10,20)
-            neighbourhood.cost_of_living = random.randint(10,20)
-            neighbourhood.average_house_price = random.randint(50,150)
-            self.schedule.add(neighbourhood)
+            # Initialize each Neighbourhood by loading data from the dataset
+            self.load_neighbourhood_data(neighbourhood) # THIS STEP COULD BE PERFORMED OUTSIDE OF THE LOOP
 
-            # Create People and assign them to a Neighbourhood
+            # Create Person and House agents and assign them to a Neighbourhood
             for i in range(1, neighbourhood.capacity):
-                # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
-                person = Person(unique_id=self.population_size+i, 
-                                model=self, 
-                                weight_1=random.random(), 
-                                weight_2=random.random(), 
-                                starting_money=random.randint(200, 500), 
-                                living_location=neighbourhood)
-                self.schedule.add(person)
-
-                # Assign houses to each of the Person agents
-                house = House(  unique_id=self.population_size+i+10000, # FIND BETTER WAY FOR ID ASSIGNMENT
-                                model=self, 
-                                neighbourhood=neighbourhood, 
-                                price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
-                                owner=person,
-                                geometry=neighbourhood.geometry,
-                                crs=neighbourhood.crs)
-                self.schedule.add(house)
+                person, house = self.add_person_and_house(i, neighbourhood)
 
                 # Upadating contentment for the init
                 self.average_contentment += person.contentment
@@ -98,7 +151,7 @@ class Housing(mesa.Model):
 
         # Collecting data   
         self.datacollector.collect(self)
-
+    
     def find_sellers(self, agents):
         """
         Finds all Person agents that are willing to sell their houses.
@@ -123,6 +176,7 @@ class Housing(mesa.Model):
             new_s1_score: New contentment score for the first agent.
             new_s2_score: New contentment score for the second agent.
         """
+        
         # Detrmine price of houses
         s1_price = (1 + new_s1_score - s1.contentment) * s1.neighbourhood.average_house_price # Money paid, based on the deviation from contentment score threshold
         s2_price = (1 + new_s2_score - s2.contentment) * s2.neighbourhood.average_house_price
@@ -232,7 +286,7 @@ class Housing(mesa.Model):
         """
         Advance the model by one step.
         """ 
-        
+
         # Resetting deals counter and average_contentment
         self.deals = 0
         self.average_contentment = 0

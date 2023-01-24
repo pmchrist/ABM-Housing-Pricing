@@ -1,4 +1,5 @@
 import random
+
 import mesa
 import mesa_geo as mg
 
@@ -7,7 +8,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent, contentment_threshold=0.4):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -22,16 +23,10 @@ class Person(mesa.Agent):
 
         super().__init__(unique_id, model)
 
-        # Parameters that are fixed and assigned on init of agent.
         self.weight_1 = weight_1
         self.weight_2 = weight_2
-
-        # Parameters that depend on the neighbourhood and are assigned on init of neighbourhood.
         self.cash = starting_money
         self.neighbourhood = living_location
-        self.contentment_threshold = contentment_threshold
-
-        # Parameters that are dynamic and re-calculated on each step().
         self.contentment = self.calculate_contentment(self.neighbourhood)
         self.selling = self.get_selling_status()
         self.house = None
@@ -43,6 +38,7 @@ class Person(mesa.Agent):
         Args:
             neighbourhood: The neighbourhood the agent is currently living in.
         """
+        
         # THIS IS A TEST FORMULA, SHOULD BE BASED ON NEIGHBOURHOOD DATA
         return self.weight_1 * neighbourhood.param_1 + self.weight_2 * neighbourhood.param_2
 
@@ -51,7 +47,7 @@ class Person(mesa.Agent):
         Updates the house selling status of the agent.
         """
 
-        if self.contentment < self.contentment_threshold:
+        if self.contentment < self.model.contentment_threshold:
             return True
         else:
             return False
@@ -60,17 +56,18 @@ class Person(mesa.Agent):
         """
         Updates the agents attributes after every step.
         """
-        # Decreasing gradually to reflect boredom from neighbourhood
-        #self.weight_1 = self.weight_1 * .95 # If we use these params in the final verson, we should also reset them after each move
-        #self.weight_2 = self.weight_2 * .95
 
         # Update net income based on neighbourhood.
         self.cash = self.cash - self.neighbourhood.cost_of_living
-        self.cash = self.cash + self.neighbourhood.salary
+        self.cash = self.cash + self.neighbourhood.avarage_salary
 
         # Update Contentment and Selling status
         self.contentment = self.calculate_contentment(self.neighbourhood)
         self.selling = self.get_selling_status()     # Depends on Contentment
+
+        # Decreasing gradually to reflect boredom from neighbourhood
+        #self.weight_1 = self.weight_1 * .95 # If we use these params in the final verson, we should also reset them after each move
+        #self.weight_2 = self.weight_2 * .95
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
@@ -96,28 +93,37 @@ class Neighbourhood(mg.GeoAgent):
             model: Mesa model the agent is part of.
             geometry: GeoJSON geometry object.
             crs: Coordinate reference system.
+
+            Attributes:
+                moves: Amount of traded houses in this neighbourhood.
+                capacity: Max amount of houses in this neighbourhood.
+                param_1: Some parameter for contentness function.
+                param_2: Some parameter for contentness function.
+                salary: Average salary in this neighbourhood.
+                cost_of_living: Average cost of living in this neighbourhood.
+                average_house_price: Average house price in this neighbourhood.
+                houses: List of houses in this neighbourhood.
         """
 
         super().__init__(unique_id, model, geometry, crs)
-        self.moves = 0 # amount of traded houses in this neighbourhood
-        self.capacity = None # max amount of houses in this neighbourhood
-        self.param_1 = None # some parameter for contentness function
-        self.param_2 = None # some parameter for contentness function
-        self.salary = None # average salary in this neighbourhood
-        self.cost_of_living = None # average cost of living in this neighbourhood
-        self.average_house_price = None # average house price in this neighbourhood
-        self.houses = [] # list of houses in this neighbourhood
+        self.moves = 0
+        self.capacity = None
+        self.param_1 = None
+        self.param_2 = None
+        self.avarage_salary = None
+        self.cost_of_living = None
+        self.average_house_price = None
+        self.houses = []
 
     def growth(self):
         """
         Gradually increses attributes of neigbouhood.
         """
         
-        self.salary = self.salary * 1.01
+        self.avarage_salary = self.avarage_salary * 1.01
         self.cost_of_living =  self.cost_of_living * 1.01
 
-        # I think these should be recalculated and determined by the house class
-        # self.average_house_price = self.average_house_price * 1.01
+        # DO WE GRADUALLY INCREASE CAPACITY OF THE NEIGHBOURHOOD?
         # self.capacity = self.capacity * 1.01
 
     def noise(self):
@@ -125,7 +131,7 @@ class Neighbourhood(mg.GeoAgent):
         Add stochastic noise to param_1 and params_2.
         """
 
-        sigma = 0.0
+        sigma = self.model.noise
         self.param_1 = self.param_1 + random.uniform(-sigma, sigma)
         self.param_2 = self.param_2 + random.uniform(-sigma, sigma)
 
@@ -142,6 +148,7 @@ class House(mg.GeoAgent):
     """
     GeoAgent representing a house in a neighbourhood.
     """
+    
     def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person, geometry, crs):
         """
         Create a new house.
@@ -155,6 +162,7 @@ class House(mg.GeoAgent):
             is_red: Boolean indicating if the house is red or not.
             geometry: GeoJSON geometry object.
             crs: Coordinate reference system.
+        
         """
 
         super().__init__(unique_id, model, geometry, crs)
