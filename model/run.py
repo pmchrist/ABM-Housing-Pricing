@@ -1,12 +1,18 @@
-debug = True
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-v', action='store_true')
+# parser.add_argument('-d', dest='-v', action='store_false')
+parser.set_defaults(v=False)
+args = parser.parse_args()
 
 # To run visualization
-if not debug:
+if args.v == True:
     from server import server
     server.launch()
 
 # Or, to not run visualization
-if debug:
+elif args.v == False:
     from model import Housing
     from agents import Person, Neighbourhood, House
 

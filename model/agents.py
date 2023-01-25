@@ -177,7 +177,6 @@ class House(mg.GeoAgent):
         # Assign house to Person agent
         owner.house = self
 
-
         # Assign house to Neighbourhood agent
         self.neighbourhood.houses.append(self)
 

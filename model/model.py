@@ -1,6 +1,4 @@
-from agents import Person
-from agents import Neighbourhood
-from agents import House
+from agents import Person, Neighbourhood, House
 
 import random
 import numpy as np
