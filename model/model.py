@@ -190,13 +190,13 @@ class Housing(mesa.Model):
                 + " / " + str((self.population_size-len([person for person in self.get_agents(Person) if person.selling]))/self.population_size))
 
         # Print a fun little house :)
-        print("\n                              ~~   ")
-        print("                             ~   ~~  ")
-        print("                           _u__      ")
-        print("                          /____\\    ")
-        print("                          |[][] |    ")
-        print("                          |[]..|     ")
-        print("                          '--'''\n   ")
+        print("\n                                ~~   ")
+        print("                               ~       ")
+        print("                             _u__      ")
+        print("                            /____\\    ")
+        print("                            |[][]|     ")
+        print("                            |[]..|     ")
+        print("                            '--'''\n   ")
 
     def find_sellers(self, agents):
         """
