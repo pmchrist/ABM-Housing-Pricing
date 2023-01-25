@@ -1,15 +1,53 @@
-debug = False
+# What to run
+debug = True
+batch = True
+
+import mesa
+import pandas as pd
+
+from model import Housing
+from agents import Person, Neighbourhood, House
+from multiprocessing import freeze_support
 
 # To run visualization
 if not debug:
     from server import server
     server.launch()
 
+if batch and debug:
+
+    #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
+    # We should use some sampling to use paramter range for the complete running
+    params = {"num_people": 100,
+            "num_houses": 100,
+            "noise": 0.0,
+            "contentment_threshold": 0.4,
+            "weight_1": 1.0,
+            "weight_2": 1.0}
+
+    results = []
+
+    # If for freeze_support() is only necessary on windows
+    if __name__ == '__main__':
+        freeze_support()
+        results = mesa.batch_run(
+            Housing,
+            parameters=params,
+            iterations=1000,
+            max_steps=20,
+            number_processes=20,
+            data_collection_period=1,
+            display_progress=True,
+        )
+    
+    if results:
+        results_df = pd.DataFrame(results)
+        print(results_df.keys())
+
+
+
 # Or, to not run visualization
 if debug:
-    from model import Housing
-    from agents import Person, Neighbourhood, House
-
     # Some values for statistics at the end
     population = 0
     unhappy_population = 0
