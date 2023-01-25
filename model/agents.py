@@ -101,7 +101,7 @@ class Neighbourhood(mg.GeoAgent):
                 param_2: Some parameter for contentness function.
                 salary: Average salary in this neighbourhood.
                 cost_of_living: Average cost of living in this neighbourhood.
-                average_house_price: Average house price in this neighbourhood.
+                average_house_price_history: List of average house prices in this neighbourhood.
                 houses: List of houses in this neighbourhood.
         """
 
@@ -112,7 +112,6 @@ class Neighbourhood(mg.GeoAgent):
         self.param_2 = None
         self.avarage_salary = None
         self.cost_of_living = None
-        self.average_house_price = None
         self.average_house_price_history = []
         self.houses = []
 
@@ -169,10 +168,8 @@ class House(mg.GeoAgent):
         super().__init__(unique_id, model, geometry, crs)
 
         self.neighbourhood = neighbourhood
-        # self.price = price
         self.price_history = [initial_price]
         self.owner = owner
-        # self.is_red = None # attribute determining the color of the house
 
         # Assign house to Person agent
         owner.house = self

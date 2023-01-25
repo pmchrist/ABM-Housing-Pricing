@@ -73,7 +73,7 @@ class Housing(mesa.Model):
         neighbourhood.capacity = random.randint(1, 5)
         neighbourhood.avarage_salary = random.randint(10,20)
         neighbourhood.cost_of_living = random.randint(10,20)
-        neighbourhood.average_house_price = random.randint(50,150)
+        neighbourhood.average_house_price_history.append(random.randint(50,150))
         self.schedule.add(neighbourhood)
 
     def add_neighbourhoods(self, fn='../data/Amsterdam_map_from_github.geojson'):
@@ -114,7 +114,7 @@ class Housing(mesa.Model):
         house = House(  unique_id="House_"+str(self.population_size+id), # FIND BETTER WAY FOR ID ASSIGNMENT
                         model=self, 
                         neighbourhood=neighbourhood, 
-                        initial_price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
+                        initial_price=neighbourhood.average_house_price_history[-1], # MAYEBE ADD SOME RANDOMNESS TO THIS 
                         owner=person,
                         geometry=neighbourhood.geometry,
                         crs=neighbourhood.crs)
@@ -164,27 +164,39 @@ class Housing(mesa.Model):
         Prints the initial parameters and stats of the model.
         """
 
+        # Print a pretty header ;)
+        print(" _  _             _            __  __          _       _     ")
+        print("| || |___ _  _ __(_)_ _  __ _ |  \/  |__ _ _ _| |_____| |_   ")
+        print("| __ / _ \ || (_-< | ' \/ _` || |\/| / _` | '_| / / -_)  _|  ")
+        print("|_||_\___/\_,_/__/_|_||_\__, ||_|  |_\__,_|_| |_\_\___|\__|  ")
+        print("            /_\  _|___/__| |_ ___ _ _ __| |__ _ _ __         ")
+        print("           / _ \| '  \(_-<  _/ -_) '_/ _` / _` | '  \        ")
+        print("          /_/ \_\_|_|_/__/\__\___|_| \__,_\__,_|_|_|_|       \n")
+
         # Print initial parameters and stats
-        print("-------------------- INITIAL MODEL --------------------")
+        print("---------------------- INITIAL MODEL ----------------------")
         print("Population size:             " + str(self.population_size))
+        print("Number of neighbourhoods:    " + str(len(self.get_agents(Neighbourhood))))
         print("Contentment threshold:       " + str(self.contentment_threshold))
         print("Noise:                       " + str(self.noise))
-        print("Number of neighbourhoods:    " + str(len(self.get_agents(Neighbourhood))))
-        print("-------------------- INITIAL STATS --------------------")
+        print("Parameter 1:                 " + str(self.param_1))
+        print("Parameter 2:                 " + str(self.param_2))
+        
+        print("---------------------- INITIAL STATS ----------------------")
         print("Average Contentment:         " + str(self.average_contentment[-1]))
-        print("House-Seekers:               " + str(len([person for person in self.get_agents(Person) if person.selling])))
         print("Average House Price:         " + str(np.mean([house.price_history[-1] for house in self.get_agents(House)])))
+        print("House-Seekers:               " + str(len([person for person in self.get_agents(Person) if person.selling])))
+        print("Fraction Unhappy/Happy:      " + str(len([person for person in self.get_agents(Person) if person.selling])/self.population_size) 
+                + " / " + str((self.population_size-len([person for person in self.get_agents(Person) if person.selling]))/self.population_size))
 
         # Print a fun little house :)
-        print("\n                            ~~")
-        print("                           ~")
-        print("                         _u__")
-        print("                        /____\\")
-        print("                        |[][]|")
-        print("                        |[]..|")
-        print("                        '--'''\n")
-
-
+        print("\n                              ~~   ")
+        print("                             ~   ~~  ")
+        print("                           _u__      ")
+        print("                          /____\\    ")
+        print("                          |[][] |    ")
+        print("                          |[]..|     ")
+        print("                          '--'''\n   ")
 
     def find_sellers(self, agents):
         """
@@ -217,8 +229,6 @@ class Housing(mesa.Model):
         house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price_history[-1]
 
         # Update House prices and history
-        # s1.house.price = house1_price
-        # s2.house.price = house2_price
         s1.house.price_history.append(house1_price)
         s2.house.price_history.append(house2_price)
 
@@ -261,18 +271,17 @@ class Housing(mesa.Model):
         """
 
         for neighbourhood in neighbourhoods:
-            # check if houses in neighbourhood
+            # Check if houses in neighbourhood
             if len(neighbourhood.houses) == 0:
                 continue
-            # reset variables
+            # Reset variables
             price_sum = 0
             houses_num = 0
-            # calculate new average price for each neighbourhood
+            # Calculate new average price for each neighbourhood
             for house in neighbourhood.houses:
                 price_sum += house.price_history[-1]
                 houses_num += 1
-            neighbourhood.average_house_price = price_sum / houses_num
-            neighbourhood.average_house_price_history.append(neighbourhood.average_house_price)
+            neighbourhood.average_house_price_history.append(price_sum / houses_num)
 
     def auction(self, sellers):
         """
@@ -332,13 +341,15 @@ class Housing(mesa.Model):
 
         # Check if there are no more deals
         if self.deals[-1] == 0:
-            print("----------------- EQUILIBRIUM REACHED -----------------")
+            print("------------------- EQUILIBRIUM REACHED -------------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
-            print("--------------------- FINAL STATS ---------------------")
+            print("----------------------- FINAL STATS -----------------------")
             print("Average Deals:               " + str(np.mean(self.deals)))
             print("Average Contentment:         " + str(self.average_contentment[-1]))
-            print("House Seekers:               " + str(self.house_seekers[-1]))
             print("Average House Price:         " + str(self.average_house_price[-1]))
+            print("House Seekers:               " + str(self.house_seekers[-1]))
+            print("Fraction Unhappy/Happy:      " + str(self.house_seekers[-1]/self.population_size) + " / " + str((self.population_size-self.house_seekers[-1])/self.population_size))
+            
             self.running = False
         else:
             self.running = True
@@ -352,11 +363,8 @@ class Housing(mesa.Model):
         if self.running == False:
             return
 
-        # Getting all agents
-        agents = self.schedule.agents
-
         # Find all agents that are willing to sell
-        sellers = self.find_sellers(agents)
+        sellers = self.find_sellers(self.get_agents(Person))
 
         # Perfrom house trades
         self.auction(sellers)
@@ -369,7 +377,7 @@ class Housing(mesa.Model):
         self.update_average_house_price(neighbourhoods)
         
         # Updating statistics and collecting data
-        self.update_statistics(agents)
+        self.update_statistics(self.schedule.agents)
         self.datacollector.collect(self)
         
         # Check if model has reached equilibrium
