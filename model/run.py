@@ -2,7 +2,6 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', action='store_true')
-# parser.add_argument('-d', dest='-v', action='store_false')
 parser.set_defaults(v=False)
 args = parser.parse_args()
 

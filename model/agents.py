@@ -150,7 +150,7 @@ class House(mg.GeoAgent):
     GeoAgent representing a house in a neighbourhood.
     """
     
-    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person, geometry, crs):
+    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, owner: Person, geometry, crs):
         """
         Create a new house.
         
@@ -169,8 +169,8 @@ class House(mg.GeoAgent):
         super().__init__(unique_id, model, geometry, crs)
 
         self.neighbourhood = neighbourhood
-        self.price = price
-        self.price_history = [price]
+        # self.price = price
+        self.price_history = [initial_price]
         self.owner = owner
         # self.is_red = None # attribute determining the color of the house
 
@@ -185,7 +185,7 @@ class House(mg.GeoAgent):
         Gradually increases the price of the house.
         """
 
-        self.price = self.price * 1.01
+        self.price_history[-1] = self.price_history[-1] * 1.01
 
     def step(self):
         """

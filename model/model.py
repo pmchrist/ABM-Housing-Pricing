@@ -44,6 +44,7 @@ class Housing(mesa.Model):
         self.average_contentment = []
         self.average_house_price = []
         self.deals = []
+        self.house_seekers = []
 
         # Attributes
         self.contentment_threshold = contentment_threshold
@@ -113,7 +114,7 @@ class Housing(mesa.Model):
         house = House(  unique_id="House_"+str(self.population_size+id), # FIND BETTER WAY FOR ID ASSIGNMENT
                         model=self, 
                         neighbourhood=neighbourhood, 
-                        price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
+                        initial_price=neighbourhood.average_house_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
                         owner=person,
                         geometry=neighbourhood.geometry,
                         crs=neighbourhood.crs)
@@ -160,17 +161,21 @@ class Housing(mesa.Model):
     
     def print_init(self):
         """
-        Prints the initial parameters of the model.
+        Prints the initial parameters and stats of the model.
         """
 
+        # Print initial parameters and stats
         print("-------------------- INITIAL MODEL --------------------")
         print("Population size:             " + str(self.population_size))
         print("Contentment threshold:       " + str(self.contentment_threshold))
         print("Noise:                       " + str(self.noise))
-        print("Number of neighbourhoods:    " + str(len(self.schedule.agents_by_type[Neighbourhood])))
+        print("Number of neighbourhoods:    " + str(len(self.get_agents(Neighbourhood))))
         print("-------------------- INITIAL STATS --------------------")
         print("Average Contentment:         " + str(self.average_contentment[-1]))
+        print("House-Seekers:               " + str(len([person for person in self.get_agents(Person) if person.selling])))
+        print("Average House Price:         " + str(np.mean([house.price_history[-1] for house in self.get_agents(House)])))
 
+        # Print a fun little house :)
         print("\n                            ~~")
         print("                           ~")
         print("                         _u__")
@@ -208,12 +213,12 @@ class Housing(mesa.Model):
         
         # Detrmine price of houses
         # LOOK AT THIS
-        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price # Money paid, based on the deviation from contentment score threshold
-        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
+        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price_history[-1] # Money paid, based on the deviation from contentment score threshold
+        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price_history[-1]
 
         # Update House prices and history
-        s1.house.price = house1_price
-        s2.house.price = house2_price
+        # s1.house.price = house1_price
+        # s2.house.price = house2_price
         s1.house.price_history.append(house1_price)
         s2.house.price_history.append(house2_price)
 
@@ -233,7 +238,7 @@ class Housing(mesa.Model):
         s1.house = s1_new_house
         s2.house = s2_new_house
 
-    def get_agent(self, agent_class):
+    def get_agents(self, agent_class):
         """
         Returns a list of all the specifiied Agents in the model.
 
@@ -264,7 +269,7 @@ class Housing(mesa.Model):
             houses_num = 0
             # calculate new average price for each neighbourhood
             for house in neighbourhood.houses:
-                price_sum += house.price
+                price_sum += house.price_history[-1]
                 houses_num += 1
             neighbourhood.average_house_price = price_sum / houses_num
             neighbourhood.average_house_price_history.append(neighbourhood.average_house_price)
@@ -309,14 +314,18 @@ class Housing(mesa.Model):
             agents: List of all agents in the model.
         """
 
-        # recalculate average contentment
+        # Recalculate average contentment
         tmp_contentment = 0
-        for person in self.get_agent(Person):
+        for person in self.get_agents(Person):
             tmp_contentment += person.contentment
         self.average_contentment.append(tmp_contentment / self.population_size)
         # Probably STD is more interesting thing to visualize
 
-        # recalculate average price
+        # Recalculate average house price of entire city
+        self.average_house_price.append(np.mean([house.price_history[-1] for house in self.get_agents(House)]))
+
+        # Recalculate number of house seekers in the city
+        self.house_seekers.append(len([person for person in self.get_agents(Person) if person.selling]))
 
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
@@ -326,8 +335,10 @@ class Housing(mesa.Model):
             print("----------------- EQUILIBRIUM REACHED -----------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
             print("--------------------- FINAL STATS ---------------------")
+            print("Average Deals:               " + str(np.mean(self.deals)))
             print("Average Contentment:         " + str(self.average_contentment[-1]))
-            print("Average Deals:               " + str(np.mean(self.deals[-10:])))
+            print("House Seekers:               " + str(self.house_seekers[-1]))
+            print("Average House Price:         " + str(self.average_house_price[-1]))
             self.running = False
         else:
             self.running = True
@@ -336,12 +347,10 @@ class Housing(mesa.Model):
         """
         Advance the model by one step.
         """ 
+
+        # Stop if model has reached equilibrium
         if self.running == False:
             return
-
-        # Resetting deals counter and average_contentment
-        # self.deals = 0
-        # self.average_contentment = 0
 
         # Getting all agents
         agents = self.schedule.agents
@@ -356,14 +365,14 @@ class Housing(mesa.Model):
         self.schedule.step() # runs step in Agents to update values based on new neighbourhood
         
         # Recalculate average house price per neighbourhood
-        neighbourhoods = self.get_agent(Neighbourhood)
+        neighbourhoods = self.get_agents(Neighbourhood)
         self.update_average_house_price(neighbourhoods)
         
         # Updating statistics and collecting data
         self.update_statistics(agents)
         self.datacollector.collect(self)
         
-        # Managing running of simulator and setting next turn
+        # Check if model has reached equilibrium
         self.equilibrium()
 
         return
