@@ -3,6 +3,7 @@ from agents import Neighbourhood
 from agents import House
 
 import random
+import numpy as np
 import json
 
 import mesa
@@ -13,7 +14,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, weight_1: float, weight_2: float):
+    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, param_1: float, param_2: float):
         """
         Create a model for the housing market.
 
@@ -22,10 +23,13 @@ class Housing(mesa.Model):
             num_houses: Number of houses in the model.
             noise: Noise term added to the parameters of a neighbourhood.
             contentment_threshold: Threshold for agent to start selling the house.
-            weight_1: Weight of the first parameter in the contentment function.
-            weight_2: Weight of the second parameter in the contentment function.
+            param_1: PARAMETER WE ARE ANALYZING.
+            param_2: PARAMETER WE ARE ANALYZING.
 
         Attributes:
+            population_size: Counter for assiging People IDs.
+            average_contentment: The average contentment of all agents.
+            average_house_price: The average house price of all houses.
             deals: The amount of exchanges happening on each step.
             schedule: The scheduler for the model.
             space: The spatial environment for the model.
@@ -33,14 +37,15 @@ class Housing(mesa.Model):
             running: Boolean for stopping the model when equilibrium is reached.
         """
         
-        # Variables representing agents preferences
-        self.weight_1 = weight_1
-        self.weight_2 = weight_2
+        # Variables representing parameters
+        self.param_1 = param_1
+        self.param_2 = param_2
 
         # Variables for keeping track of statistics of the model
-        self.population_size = 0 # Counter for assiging People IDs
-        self.average_contentment = 0 # Average contentment of all agents
-        self.deals = 0  # Counter for amount of trades happening on each step
+        self.population_size = 0
+        self.average_contentment = []
+        self.average_house_price = []
+        self.deals = []
 
         # Attributes
         self.contentment_threshold = contentment_threshold
@@ -131,6 +136,7 @@ class Housing(mesa.Model):
         # Add Neighbourhoods GeoAgents to the model
         neighbourhoods = self.add_neighbourhoods()
 
+        tmp_contentment = 0
         for neighbourhood in neighbourhoods:
             # Initialize each Neighbourhood by loading data from the dataset
             self.load_neighbourhood_data(neighbourhood) # THIS STEP COULD BE PERFORMED OUTSIDE OF THE LOOP
@@ -140,18 +146,43 @@ class Housing(mesa.Model):
                 person, house = self.add_person_and_house(i, neighbourhood)
 
                 # Upadating contentment for the init
-                self.average_contentment += person.contentment
+                tmp_contentment += person.contentment
 
             # Update counter for People IDs
             self.population_size += neighbourhood.capacity
             
         # Calculate average contentment
-        self.average_contentment = self.average_contentment / self.population_size
-        print("Initial Average Contentment: ", self.average_contentment)
+        self.average_contentment.append(tmp_contentment / self.population_size)
+        
+        # Print initial parameters
+        self.print_init()
 
         # Collecting data   
         self.datacollector.collect(self)
     
+    def print_init(self):
+        """
+        Prints the initial parameters of the model.
+        """
+
+        print("-------------------- INITIAL MODEL --------------------")
+        print("Population size:             " + str(self.population_size))
+        print("Contentment threshold:       " + str(self.contentment_threshold))
+        print("Noise:                       " + str(self.noise))
+        print("Number of neighbourhoods:    " + str(len(self.schedule.agents_by_type[Neighbourhood])))
+        print("-------------------- INITIAL STATS --------------------")
+        print("Average Contentment:         " + str(self.average_contentment[-1]))
+
+        print("\n                            ~~")
+        print("                           ~")
+        print("                         _u__")
+        print("                        /____\\")
+        print("                        |[][]|")
+        print("                        |[]..|")
+        print("                        '--'''\n")
+
+
+
     def find_sellers(self, agents):
         """
         Finds all Person agents that are willing to sell their houses.
@@ -204,16 +235,19 @@ class Housing(mesa.Model):
         s1.house = s1_new_house
         s2.house = s2_new_house
 
-    def get_neighbourhoods(self):
+    def get_agent(self, agent_class):
         """
-        Returns a list of all neighbourhoods in the model.
+        Returns a list of all the specifiied Agents in the model.
+
+        Args:
+            agent_class: The class of the agents to be returned.
         """
 
-        neighbourhoods = []
+        agents = []
         for agent in self.schedule.agents:
-            if isinstance(agent, Neighbourhood):
-                neighbourhoods.append(agent)
-        return neighbourhoods
+            if isinstance(agent, agent_class):
+                agents.append(agent)
+        return agents
 
     def update_average_house_price(self, neighbourhoods):
         """
@@ -245,6 +279,7 @@ class Housing(mesa.Model):
             sellers: List of agents that are willing to sell.
         """
         
+        tmp_deals = 0
         for s1 in sellers:
             for s2 in sellers:
                 if s1 != s2 and s1 is not None and s2 is not None:
@@ -258,13 +293,15 @@ class Housing(mesa.Model):
                         self.swap(s1, s2, new_s1_score, new_s2_score)
  
                         # Updating statistics
-                        self.deals += 1
+                        tmp_deals += 1
                         s1.neighbourhood.moves += 1
                         s2.neighbourhood.moves += 1
 
                         # As they already exchanged, they should not do it again and we forget them
                         s1 = None
                         s2 = None
+
+        self.deals.append(tmp_deals)
 
     def update_statistics(self, agents):
         """
@@ -274,18 +311,25 @@ class Housing(mesa.Model):
             agents: List of all agents in the model.
         """
 
-        # Getting stats for visualization
-        for agent in agents:
-            if isinstance(agent, Person):
-                self.average_contentment += agent.contentment
-        self.average_contentment = self.average_contentment / self.population_size
+        # recalculate average contentment
+        tmp_contentment = 0
+        for person in self.get_agent(Person):
+            tmp_contentment += person.contentment
+        self.average_contentment.append(tmp_contentment / self.population_size)
         # Probably STD is more interesting thing to visualize
+
+        # recalculate average price
 
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
 
         # Check if there are no more deals
-        if self.deals == 0:
+        if self.deals[-1] == 0:
+            print("----------------- EQUILIBRIUM REACHED -----------------")
+            print("After:                       " + str(self.schedule.steps) + " steps")
+            print("--------------------- FINAL STATS ---------------------")
+            print("Average Contentment:         " + str(self.average_contentment[-1]))
+            print("Average Deals:               " + str(np.mean(self.deals[-10:])))
             self.running = False
         else:
             self.running = True
@@ -294,10 +338,12 @@ class Housing(mesa.Model):
         """
         Advance the model by one step.
         """ 
+        if self.running == False:
+            return
 
         # Resetting deals counter and average_contentment
-        self.deals = 0
-        self.average_contentment = 0
+        # self.deals = 0
+        # self.average_contentment = 0
 
         # Getting all agents
         agents = self.schedule.agents
@@ -312,7 +358,7 @@ class Housing(mesa.Model):
         self.schedule.step() # runs step in Agents to update values based on new neighbourhood
         
         # Recalculate average house price per neighbourhood
-        neighbourhoods = self.get_neighbourhoods()
+        neighbourhoods = self.get_agent(Neighbourhood)
         self.update_average_house_price(neighbourhoods)
         
         # Updating statistics and collecting data

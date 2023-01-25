@@ -1,4 +1,4 @@
-debug = False
+debug = True
 
 # To run visualization
 if not debug:
@@ -15,7 +15,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_people=100, num_houses=100, noise=0.0, contentment_threshold=0.4, weight_1=1.0, weight_2=1.0)
+    model = Housing(num_people=100, num_houses=100, noise=0.0, contentment_threshold=0.4, param_1=1.0, param_2=1.0)
     for i in range(10):
         model.step()
 
@@ -31,8 +31,8 @@ if debug:
             if agent.contentment < agent.model.contentment_threshold:
                 unhappy_population += 1
 
-    print("Population: ", population)
-    print("Unhappy Population %: ", unhappy_population/population)
+    # print("Population: ", population)
+    # print("Unhappy Population %: ", unhappy_population/population)
 
 
 # Some available stuff to access:
