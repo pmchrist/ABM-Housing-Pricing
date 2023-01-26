@@ -44,7 +44,7 @@ class Person(mesa.Agent):
         b: Weight for money loving
         
         Args:
-            neighbourhood: The neighbourhood the agent is currently living in.
+            neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
         """
 
         # STILL NOT COMPLETELY CORRECT

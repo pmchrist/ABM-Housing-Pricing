@@ -299,26 +299,35 @@ class Housing(mesa.Model):
         
         tmp_deals = 0
         for s1 in sellers:
+            matches = {}
             for s2 in sellers:
                 if s1 != s2 and s1 is not None and s2 is not None:
                     # Calculate contentment for both parties in potential new neighbourhoods
                     new_s1_score = s1.calculate_contentment(s2.neighbourhood)
                     new_s2_score = s2.calculate_contentment(s1.neighbourhood)
 
-                    # Improve buyer seller matching, by getting all better offers, and choose from them
-                    # If both parties are happy with the deal, swap houses
+                    # If both parties are happy with the deal, save the potential match
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
-                        self.swap(s1, s2, new_s1_score, new_s2_score)
- 
-                        # Updating statistics
-                        tmp_deals += 1
-                        s1.neighbourhood.moves += 1
-                        s2.neighbourhood.moves += 1
+                        matches[s2] = new_s1_score
+            
+            # If there are any matches, perform the swap with the best match for s1
+            if len(matches) > 0: 
+                # Find the best match
+                top_match = max(matches, key=matches.get)
 
-                        # As they already exchanged, they should not do it again and we forget them
-                        s1 = None
-                        s2 = None
+                # Swap houses
+                self.swap(s1, top_match, matches[top_match], top_match.calculate_contentment(s1.neighbourhood))
 
+                # Updating statistics
+                tmp_deals += 1
+                s1.neighbourhood.moves += 1
+                top_match.neighbourhood.moves += 1
+
+                # Remove both agents from the list of sellers
+                sellers.remove(s1)
+                sellers.remove(top_match)
+
+        # Update number of deals statistic
         self.deals.append(tmp_deals)
 
     def update_statistics(self, agents):
