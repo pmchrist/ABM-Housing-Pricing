@@ -1,0 +1,39 @@
+Satisfaction with Neighbourhoods    Base Line to Compare
+Houses Sold                         Base Line to Compare
+Average House Price                 Base Line to Compare
+Tendency to move in/out             Base Line to Compare
+
+Inhabitants/Population                      Base Line to Init
+Houses                                      Base Line to Init
+Average Person Income                       Base Line to Init
+Average Disposable Income per Household     We can find Expenses (in combination with average housing occupancy) to Init
+Average Housing Occupancy                   Can be used to connect personal and household statistics
+
+Satisfaction with Housing           Can use as Quality of Houses per Neighbourhood
+Crime Index                         Base Line to Init
+Feeling of Insecurity               Base Line to Init (this or previous, as they show kinda the same thing)
+Density                             Might be used
+Housing Density                     Might be used (this or previous, as they show kinda the same thing)
+Average Rent                        Better not to use (House price is the target not rent)
+
+Surface                             Useless
+Area                                Useless
+Amount of People with Income        Useless?
+Amount of House Keepers             Useless?
+
+Some generic possible params for Neighbourhoods
+https://data.amsterdam.nl/datasets/T3YKTHT1a8w8Wg/leefbaarheid-woonomgeving/
+
+*All of the datasets are somewhat cleaned and include only latest data, to use in the model
+Full datasets are available on the doc
+
+
+Final Datasets Used:
+https://data.amsterdam.nl/datasets/20Gw9515K91psg/kerncijfers-22-gebieden/
+https://data.amsterdam.nl/datasets/03G1QUEsOQ2Xkw/woningmarkt/
+https://data.amsterdam.nl/datasets/T3YKTHT1a8w8Wg/leefbaarheid-woonomgeving/
+https://data.amsterdam.nl/datasets/bvQgDnWP1aZj8A/inkomen-en-bestedingen/?term=Inkomen+en+bestedingen
+https://data.amsterdam.nl/datasets/bcy0MclnBpXyDQ/cijfers-veiligheidsindex/
+https://data.amsterdam.nl/datasets/aC7J2a-Y02ru3A/zorg-en-welzijn/
+https://data.amsterdam.nl/datasets/03G1QUEsOQ2Xkw/woningmarkt/
+https://data.amsterdam.nl/datasets/wTP7GhMShKY6ug/bodemgebruik/
