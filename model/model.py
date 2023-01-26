@@ -12,7 +12,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, param_1: float, param_2: float):
+    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, param_1: float, param_2: float, money_loving: float):
         """
         Create a model for the housing market.
 
@@ -38,10 +38,12 @@ class Housing(mesa.Model):
         # Variables representing parameters
         self.param_1 = param_1
         self.param_2 = param_2
+        self.money_loving = money_loving
 
         # Variables for keeping track of statistics of the model
         self.population_size = 0
         self.average_contentment = []
+        self.average_cash = []
         self.average_house_price = []
         self.deals = []
         self.house_seekers = []
@@ -106,6 +108,7 @@ class Housing(mesa.Model):
                         model=self, 
                         weight_1=random.random(), 
                         weight_2=random.random(), 
+                        money_loving=self.money_loving,
                         starting_money=random.randint(200, 500), 
                         living_location=neighbourhood)
         self.schedule.add(person)
@@ -121,7 +124,6 @@ class Housing(mesa.Model):
         self.schedule.add(house)
 
         return person, house
-
     
     def setup_environment(self, num_people, num_houses):
         """
@@ -165,13 +167,15 @@ class Housing(mesa.Model):
         """
 
         # Print a pretty header ;)
-        print(" _  _             _            __  __          _       _     ")
-        print("| || |___ _  _ __(_)_ _  __ _ |  \/  |__ _ _ _| |_____| |_   ")
-        print("| __ / _ \ || (_-< | ' \/ _` || |\/| / _` | '_| / / -_)  _|  ")
-        print("|_||_\___/\_,_/__/_|_||_\__, ||_|  |_\__,_|_| |_\_\___|\__|  ")
-        print("            /_\  _|___/__| |_ ___ _ _ __| |__ _ _ __         ")
-        print("           / _ \| '  \(_-<  _/ -_) '_/ _` / _` | '  \        ")
-        print("          /_/ \_\_|_|_/__/\__\___|_| \__,_\__,_|_|_|_|       \n")
+        print("   __ __              _             __  ___         __       __ ")
+        print("  / // /__  __ _____ (_)__  ___ _  /  |/  /__ _____/ /_____ / /_")
+        print(" / _  / _ \/ // (_-</ / _ \/ _ `/ / /|_/ / _ `/ __/  '_/ -_) __/")
+        print("/_//_/\___/\_,_/___/_/_//_/\_, / /_/  /_/\_,_/_/ /_/\_\\__/\__/ ")
+        print("   ___             __     /___/   __                            ")
+        print("  / _ | __ _  ___ / /____ _______/ /__ ___ _                    ")
+        print(" / __ |/  ' \(_-</ __/ -_) __/ _  / _ `/  ' \                   ")
+        print("/_/ |_/_/_/_/___/\__/\__/_/  \_,_/\_,_/_/_/_/                 \n")
+        
 
         # Print initial parameters and stats
         print("---------------------- INITIAL MODEL ----------------------")
@@ -183,6 +187,8 @@ class Housing(mesa.Model):
         print("Parameter 2:                 " + str(self.param_2))
         
         print("---------------------- INITIAL STATS ----------------------")
+        print("Total Wealth:                " + str(np.mean([person.cash for person in self.get_agents(Person)]) * self.population_size))
+        print("Average Wealth:              " + str(np.mean([person.cash for person in self.get_agents(Person)])))
         print("Average Contentment:         " + str(self.average_contentment[-1]))
         print("Average House Price:         " + str(np.mean([house.price_history[-1] for house in self.get_agents(House)])))
         print("House-Seekers:               " + str(len([person for person in self.get_agents(Person) if person.selling])))
@@ -333,6 +339,9 @@ class Housing(mesa.Model):
         # Recalculate average house price of entire city
         self.average_house_price.append(np.mean([house.price_history[-1] for house in self.get_agents(House)]))
 
+        # Recalculate the average amount of cash in the city
+        self.average_cash.append(np.mean([person.cash for person in self.get_agents(Person)]))
+
         # Recalculate number of house seekers in the city
         self.house_seekers.append(len([person for person in self.get_agents(Person) if person.selling]))
 
@@ -344,6 +353,8 @@ class Housing(mesa.Model):
             print("------------------- EQUILIBRIUM REACHED -------------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
             print("----------------------- FINAL STATS -----------------------")
+            print("Total Wealth:                " + str(self.average_cash[-1] * self.population_size))
+            print("Average Wealth:              " + str(self.average_cash[-1]))
             print("Average Deals:               " + str(np.mean(self.deals)))
             print("Average Contentment:         " + str(self.average_contentment[-1]))
             print("Average House Price:         " + str(self.average_house_price[-1]))

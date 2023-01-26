@@ -8,7 +8,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, money_loving: float, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -25,6 +25,7 @@ class Person(mesa.Agent):
 
         self.weight_1 = weight_1
         self.weight_2 = weight_2
+        self.money_loving = money_loving
         self.cash = starting_money
         self.neighbourhood = living_location
         self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -33,14 +34,24 @@ class Person(mesa.Agent):
 
     def calculate_contentment(self, neighbourhood):
         """
-        Updates the contentness score of the agent.
+        Calculates the contentness of the agent based on a given neighbourhood.
+        This score is a derrivation of the Cobb-Douglas utility function.
+        
+        Formula: U = H ** a * M ** b
+        H: House contentness
+        M: Amount of cash
+        a: Weight for house loving
+        b: Weight for money loving
         
         Args:
             neighbourhood: The neighbourhood the agent is currently living in.
         """
-        
-        # THIS IS A TEST FORMULA, SHOULD BE BASED ON NEIGHBOURHOOD DATA
-        return self.weight_1 * neighbourhood.param_1 + self.weight_2 * neighbourhood.param_2
+
+        # STILL NOT COMPLETELY CORRECT
+        H = neighbourhood.param_1 * self.weight_1 + neighbourhood.param_2 * self.weight_2
+        contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
+
+        return contentment
 
     def get_selling_status(self):
         """
