@@ -21,7 +21,7 @@ if batch and debug:
     params = {"num_people": 100,
             "num_houses": 100,
             "noise": 0.0,
-            "contentment_threshold": 0.5,
+            "contentment_threshold": 2.0,
             "param_1": 1.0,
             "param_2": 1.0,
             "money_loving": 0.2}

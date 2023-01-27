@@ -1,4 +1,5 @@
 from agents import Person, Neighbourhood, House
+from loader import data_loader
 
 import random
 import numpy as np
@@ -34,8 +35,8 @@ class Housing(mesa.Model):
             datacollector: The datacollector for the model.
             running: Boolean for stopping the model when equilibrium is reached.
         """
-        
-        # Variables representing parameters
+
+        # Variables representing parameters for Person
         self.param_1 = param_1
         self.param_2 = param_2
         self.money_loving = money_loving
@@ -61,7 +62,7 @@ class Housing(mesa.Model):
         # Set up the model
         self.setup_environment(num_people, num_houses)
 
-    def load_neighbourhood_data(self, neighbourhood):
+    def load_neighbourhood_data(self, neighbourhoods):
         """
         Loads the data from the neighbourhoods dataset.
 
@@ -69,14 +70,22 @@ class Housing(mesa.Model):
             neighbourhood: The neighbourhood to load the data for.
         """
 
-        # IN FINAL VERSION INITIALIZE THEM WITH THE REAL LIFE VALUES FROM DATASET
-        neighbourhood.param_1 = random.random()
-        neighbourhood.param_2 = random.random()
-        neighbourhood.capacity = random.randint(1, 5)
-        neighbourhood.avarage_salary = random.randint(10,20)
-        neighbourhood.cost_of_living = random.randint(10,20)
-        neighbourhood.average_neighbourhood_price = random.randint(50,150)
-        self.schedule.add(neighbourhood)
+        gemente_data = data_loader      # Getting real life data
+
+        for i in range(len(neighbourhoods)):
+
+            neighbourhoods[i].capacity = gemente_data.neighbourhood_households_amount[i]
+            neighbourhoods[i].disposable_income = gemente_data.neighbourhood_households_disposable_income[i]
+            neighbourhoods[i].housing_quality = gemente_data.neighbourhood_housing_quality[i]
+            neighbourhoods[i].shops_index = gemente_data.neighbourhood_shops[i]
+            neighbourhoods[i].crime_index = gemente_data.neighbourhood_crime[i]
+            neighbourhoods[i].nature_index = gemente_data.neighbourhood_nature[i]
+            neighbourhoods[i].average_neighbourhood_price = sum(gemente_data.target_neighbourhood_houses_price)/len(gemente_data.target_neighbourhood_houses_price)     # Average value of all neighbourhoods is a baseline for the house price
+
+            self.schedule.add(neighbourhoods[i])
+
+            print(neighbourhoods[i])
+
 
     def add_neighbourhoods(self, fn='../data/Amsterdam_map_fin.json'):
         """
@@ -106,18 +115,20 @@ class Housing(mesa.Model):
         # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
         person = Person(unique_id="Person_"+str(self.population_size+id), 
                         model=self, 
-                        weight_1=random.random(), 
-                        weight_2=random.random(), 
+                        weight_house = random.random(), 
+                        weight_shops = random.random(), 
+                        weight_crime = random.random(), 
+                        weight_nature = random.random(),
                         money_loving=self.money_loving,
                         starting_money=random.randint(200, 500), 
                         living_location=neighbourhood)
         self.schedule.add(person)
 
         # Assign houses to each of the Person agents
-        house = House(  unique_id="House_"+str(self.population_size+id), # FIND BETTER WAY FOR ID ASSIGNMENT
+        house = House(  unique_id="House_"+str(self.population_size+id),
                         model=self, 
                         neighbourhood=neighbourhood, 
-                        initial_price=neighbourhood.average_neighbourhood_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
+                        initial_price=neighbourhood.average_neighbourhood_price,
                         owner=person,
                         geometry=neighbourhood.geometry,
                         crs=neighbourhood.crs)
@@ -138,10 +149,9 @@ class Housing(mesa.Model):
         neighbourhoods = self.add_neighbourhoods()
 
         tmp_contentment = 0
+        # Initialize each Neighbourhood by loading data from the dataset
+        self.load_neighbourhood_data(neighbourhoods)
         for neighbourhood in neighbourhoods:
-            # Initialize each Neighbourhood by loading data from the dataset
-            self.load_neighbourhood_data(neighbourhood)
-
             # Create Person and House agents and assign them to a Neighbourhood
             for i in range(1, neighbourhood.capacity):
                 person, house = self.add_person_and_house(i, neighbourhood)

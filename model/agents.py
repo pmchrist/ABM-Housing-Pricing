@@ -8,7 +8,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, money_loving: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, money_loving: float, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -23,8 +23,10 @@ class Person(mesa.Agent):
 
         super().__init__(unique_id, model)
 
-        self.weight_1 = weight_1
-        self.weight_2 = weight_2
+        self.weight_house = weight_house
+        self.weight_shops = weight_shops
+        self.weight_crime = weight_crime
+        self.weight_nature = weight_nature
         self.money_loving = money_loving
         self.cash = starting_money
         self.neighbourhood = living_location
@@ -48,7 +50,9 @@ class Person(mesa.Agent):
         """
 
         # STILL NOT COMPLETELY CORRECT
-        H = neighbourhood.param_1 * self.weight_1 + neighbourhood.param_2 * self.weight_2
+        H = neighbourhood.housing_quality * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
+        # Use monetary value (how much it is worth) of a house in calculations too,
+        # Also, use the income based on neighbourhood (neighbourhood.disposable_income)
         contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
 
         return contentment
@@ -69,8 +73,7 @@ class Person(mesa.Agent):
         """
 
         # Update net income based on neighbourhood.
-        self.cash = self.cash - self.neighbourhood.cost_of_living
-        self.cash = self.cash + self.neighbourhood.avarage_salary
+        self.cash = self.cash + self.neighbourhood.disposable_income
 
         # Update Contentment and Selling status
         self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -117,42 +120,52 @@ class Neighbourhood(mg.GeoAgent):
         """
 
         super().__init__(unique_id, model, geometry, crs)
-        self.moves = 0
+
+        # Parameters that are fixed
         self.capacity = None
-        self.param_1 = None
-        self.param_2 = None
-        self.avarage_salary = None
-        self.cost_of_living = None
+        self.disposable_income = None
+        self.housing_quality = None
+        self.shops_index = None
+        self.crime_index = None
+        self.nature_index = None
+
+        # Parameters that are we tracking in the simulation
+        self.moves = 0
         self.average_neighbourhood_price = 0
+        # House_id_s
         self.houses = []
+    
+    def __repr__(self):
+        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality={self.housing_quality}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
 
     def growth(self):
         """
         Gradually increses attributes of neigbouhood.
         """
-        
-        self.avarage_salary = self.avarage_salary * 1.01
-        self.cost_of_living =  self.cost_of_living * 1.01
-
-        # DO WE GRADUALLY INCREASE CAPACITY OF THE NEIGHBOURHOOD?
+        # Should we do anything?
         # self.capacity = self.capacity * 1.01
+        # self.disposable_income = self.disposable_income * 1.01
 
     def noise(self):
         """
-        Add stochastic noise to param_1 and params_2.
+        Add stochastic noise to init params
         """
-
         sigma = self.model.noise
-        self.param_1 = self.param_1 + random.uniform(-sigma, sigma)
-        self.param_2 = self.param_2 + random.uniform(-sigma, sigma)
+
+        self.housing_quality = self.housing_quality + random.uniform(-sigma, sigma)
+        self.shops_index = self.shops_index + random.uniform(-sigma, sigma)
+        self.crime_index = self.crime_index + random.uniform(-sigma, sigma)
+        self.nature_index = self.nature_index + random.uniform(-sigma, sigma)
 
     def step(self):
         """
         Advance neighbourhood one step.
         """
 
-        self.growth()
-        self.noise()
+        #self.growth()
+        #self.noise()
+
+    
 
 
 class House(mg.GeoAgent):
