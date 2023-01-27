@@ -47,9 +47,10 @@ class Person(mesa.Agent):
             neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
         """
 
-        # STILL NOT COMPLETELY CORRECT
+        # STILL NOT COMPLETELY CORRECT -> NORMALIZE CASH TO RICHEST PERSON / HOUSE
         H = neighbourhood.param_1 * self.weight_1 + neighbourhood.param_2 * self.weight_2
         contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
+        # contentment = (H ** (1 - self.money_loving)) * ((self.cash + self.house.price_history[-1]) ** self.money_loving)
 
         return contentment
 

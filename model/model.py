@@ -3,6 +3,7 @@ from agents import Person, Neighbourhood, House
 import random
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 import mesa
 import mesa_geo as mg
@@ -204,6 +205,10 @@ class Housing(mesa.Model):
         print("                            |[]..|     ")
         print("                            '--'''\n   ")
 
+        plt.boxplot([person.cash for person in self.get_agents(Person)])
+        plt.show()
+
+
     def find_sellers(self, agents):
         """
         Finds all Person agents that are willing to sell their houses.
@@ -312,7 +317,7 @@ class Housing(mesa.Model):
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
                         # Check if agents can afford the houses
                         if s1.cash + s1.house.price_history[-1] > s2.house.price_history[-1] and s2.cash + s2.house.price_history[-1] > s1.house.price_history[-1]:
-                            matches[s2] = new_s1_score
+                            matches[s2] = ((new_s1_score - s1.contentment) + (new_s2_score - s2.contentment)) / 2
             
             # If there are any matches, perform the swap with the best match for s1
             if len(matches) > 0: 
@@ -328,6 +333,7 @@ class Housing(mesa.Model):
                 top_match.neighbourhood.moves += 1
 
                 # Remove both agents from the list of sellers
+                # CHECK IF IT WORKS 
                 sellers.remove(s1)
                 sellers.remove(top_match)
 
@@ -373,7 +379,9 @@ class Housing(mesa.Model):
             print("Average House Price:         " + str(self.average_house_price[-1]))
             print("House Seekers:               " + str(self.house_seekers[-1]))
             print("Fraction Unhappy/Happy:      " + str(self.house_seekers[-1]/self.population_size) + " / " + str((self.population_size-self.house_seekers[-1])/self.population_size))
-            
+            plt.boxplot([person.cash for person in self.get_agents(Person)])
+            plt.show()
+
             self.running = False
         else:
             self.running = True
