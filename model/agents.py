@@ -8,7 +8,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_1: float, weight_2: float, money_loving: float, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -25,6 +25,7 @@ class Person(mesa.Agent):
 
         self.weight_1 = weight_1
         self.weight_2 = weight_2
+        self.money_loving = money_loving
         self.cash = starting_money
         self.neighbourhood = living_location
         self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -33,14 +34,24 @@ class Person(mesa.Agent):
 
     def calculate_contentment(self, neighbourhood):
         """
-        Updates the contentness score of the agent.
+        Calculates the contentness of the agent based on a given neighbourhood.
+        This score is a derrivation of the Cobb-Douglas utility function.
+        
+        Formula: U = H ** a * M ** b
+        H: House contentness
+        M: Amount of cash
+        a: Weight for house loving
+        b: Weight for money loving
         
         Args:
-            neighbourhood: The neighbourhood the agent is currently living in.
+            neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
         """
-        
-        # THIS IS A TEST FORMULA, SHOULD BE BASED ON NEIGHBOURHOOD DATA
-        return self.weight_1 * neighbourhood.param_1 + self.weight_2 * neighbourhood.param_2
+
+        # STILL NOT COMPLETELY CORRECT
+        H = neighbourhood.param_1 * self.weight_1 + neighbourhood.param_2 * self.weight_2
+        contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
+
+        return contentment
 
     def get_selling_status(self):
         """
@@ -101,7 +112,7 @@ class Neighbourhood(mg.GeoAgent):
                 param_2: Some parameter for contentness function.
                 salary: Average salary in this neighbourhood.
                 cost_of_living: Average cost of living in this neighbourhood.
-                average_house_price: Average house price in this neighbourhood.
+                average_house_price_history: List of average house prices in this neighbourhood.
                 houses: List of houses in this neighbourhood.
         """
 
@@ -112,7 +123,6 @@ class Neighbourhood(mg.GeoAgent):
         self.param_2 = None
         self.avarage_salary = None
         self.cost_of_living = None
-        self.average_house_price = None
         self.average_house_price_history = []
         self.houses = []
 
@@ -150,7 +160,7 @@ class House(mg.GeoAgent):
     GeoAgent representing a house in a neighbourhood.
     """
     
-    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, price: int, owner: Person, geometry, crs):
+    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, owner: Person, geometry, crs):
         """
         Create a new house.
         
@@ -169,14 +179,11 @@ class House(mg.GeoAgent):
         super().__init__(unique_id, model, geometry, crs)
 
         self.neighbourhood = neighbourhood
-        self.price = price
-        self.price_history = [price]
+        self.price_history = [initial_price]
         self.owner = owner
-        # self.is_red = None # attribute determining the color of the house
 
         # Assign house to Person agent
         owner.house = self
-
 
         # Assign house to Neighbourhood agent
         self.neighbourhood.houses.append(self)
@@ -186,7 +193,7 @@ class House(mg.GeoAgent):
         Gradually increases the price of the house.
         """
 
-        self.price = self.price * 1.01
+        self.price_history[-1] = self.price_history[-1] * 1.01
 
     def step(self):
         """

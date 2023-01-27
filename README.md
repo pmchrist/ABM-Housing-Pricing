@@ -9,7 +9,13 @@ pip3 install -r requirements.txt
 ```
 
 ## Usage
-To run the model, make sure your current directory is the 'model' folder and run the following command.
+To run the model with visualization, make sure your current directory is the 'model' folder and run the following command.
+
+```bash
+python3 run.py -v
+```
+
+If you want to run a pre-configured setup of our model, run the following command.
 
 ```bash
 python3 run.py

@@ -4,7 +4,7 @@ import mesa
 import mesa_geo as mg
 
 from model import Housing
-from agents import Person, Neighbourhood
+from agents import Person, Neighbourhood, House
 
 class HousingElement(mesa.visualization.TextElement):
     """
