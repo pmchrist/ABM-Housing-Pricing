@@ -1,6 +1,6 @@
 # What to run
 debug = True
-batch = True
+batch = False
 
 import mesa
 import pandas as pd
@@ -10,7 +10,7 @@ from agents import Person, Neighbourhood, House
 from multiprocessing import freeze_support
 
 # To run visualization
-if args.v == True:
+if not debug:
     from server import server
     server.launch()
 
@@ -21,9 +21,10 @@ if batch and debug:
     params = {"num_people": 100,
             "num_houses": 100,
             "noise": 0.0,
-            "contentment_threshold": 0.4,
-            "weight_1": 1.0,
-            "weight_2": 1.0}
+            "contentment_threshold": 0.5,
+            "param_1": 1.0,
+            "param_2": 1.0,
+            "money_loving": 0.2}
 
     results = []
 
@@ -53,7 +54,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_people=100, num_houses=100, noise=0.0, contentment_threshold=0.4, param_1=1.0, param_2=1.0, money_loving=.1)
+    model = Housing(num_people=100, num_houses=100, noise=0.0, contentment_threshold=0.5, param_1=1.0, param_2=1.0, money_loving=.2)
     for i in range(10):
         model.step()
 

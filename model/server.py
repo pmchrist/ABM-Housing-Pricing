@@ -20,8 +20,9 @@ class HousingElement(mesa.visualization.TextElement):
 
 # Parameters of the model
 model_params = {
-    "weight_1": mesa.visualization.Slider("Weight_1", 0.5, 0.1, 1.0, 0.1),
-    "weight_2": mesa.visualization.Slider("Weight_2", 0.5, 0.1, 1.0, 0.1),
+    "param_1": mesa.visualization.Slider("param_1", 0.5, 0.1, 1.0, 0.1),
+    "param_2": mesa.visualization.Slider("param_2", 0.5, 0.1, 1.0, 0.1),
+    "money_loving": mesa.visualization.Slider("param_2", 0.2, 0.0, 1.0, 0.1),
     "num_people": 100,
     "num_houses": 100,
     "contentment_threshold": 0.5,

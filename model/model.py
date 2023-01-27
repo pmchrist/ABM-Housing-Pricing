@@ -140,7 +140,7 @@ class Housing(mesa.Model):
         tmp_contentment = 0
         for neighbourhood in neighbourhoods:
             # Initialize each Neighbourhood by loading data from the dataset
-            self.load_neighbourhood_data(neighbourhood) # THIS STEP COULD BE PERFORMED OUTSIDE OF THE LOOP
+            self.load_neighbourhood_data(neighbourhood)
 
             # Create Person and House agents and assign them to a Neighbourhood
             for i in range(1, neighbourhood.capacity):
