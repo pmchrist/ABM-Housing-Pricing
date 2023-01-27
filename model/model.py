@@ -280,9 +280,11 @@ class Housing(mesa.Model):
             # Check if houses in neighbourhood
             if len(neighbourhood.houses) == 0:
                 continue
+
             # Reset variables
             price_sum = 0
             houses_num = 0
+            
             # Calculate new average price for each neighbourhood
             for house in neighbourhood.houses:
                 price_sum += house.price_history[-1]
@@ -308,7 +310,9 @@ class Housing(mesa.Model):
 
                     # If both parties are happy with the deal, save the potential match
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
-                        matches[s2] = new_s1_score
+                        # Check if agents can afford the houses
+                        if s1.cash + s1.house.price_history[-1] > s2.house.price_history[-1] and s2.cash + s2.house.price_history[-1] > s1.house.price_history[-1]:
+                            matches[s2] = new_s1_score
             
             # If there are any matches, perform the swap with the best match for s1
             if len(matches) > 0: 
