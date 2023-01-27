@@ -1,5 +1,5 @@
 # What to run
-debug = True
+debug = False
 batch = False
 
 import mesa

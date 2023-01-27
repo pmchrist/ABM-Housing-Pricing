@@ -78,7 +78,7 @@ class Housing(mesa.Model):
         neighbourhood.average_house_price_history.append(random.randint(50,150))
         self.schedule.add(neighbourhood)
 
-    def add_neighbourhoods(self, fn='../data/Amsterdam_map_from_github.geojson'):
+    def add_neighbourhoods(self, fn='../data/Amsterdam_map_fin.json'):
         """
         Adds Neighbourhood agents to the model.
 
@@ -89,7 +89,7 @@ class Housing(mesa.Model):
         # Seting up GeoAgents for neighbourhoods
         geojson_states = json.load(open(fn))
         neighbourhood_agents = mg.AgentCreator(agent_class=Neighbourhood, model=self)
-        neighbourhoods = neighbourhood_agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="name")     # Set unique Id to one from dataset
+        neighbourhoods = neighbourhood_agents.from_GeoJSON(GeoJSON=geojson_states, unique_id="Stadsdeel")     # Set unique Id to one from dataset
         self.space.add_agents(neighbourhoods)
 
         return neighbourhoods
