@@ -123,7 +123,7 @@ class Neighbourhood(mg.GeoAgent):
         self.param_2 = None
         self.avarage_salary = None
         self.cost_of_living = None
-        self.average_house_price_history = []
+        self.average_neighbourhood_price = 0
         self.houses = []
 
     def growth(self):
@@ -179,7 +179,7 @@ class House(mg.GeoAgent):
         super().__init__(unique_id, model, geometry, crs)
 
         self.neighbourhood = neighbourhood
-        self.price_history = [initial_price]
+        self.price = initial_price
         self.owner = owner
 
         # Assign house to Person agent
@@ -193,7 +193,7 @@ class House(mg.GeoAgent):
         Gradually increases the price of the house.
         """
 
-        self.price_history[-1] = self.price_history[-1] * 1.01
+        self.price = self.price * 1.01
 
     def step(self):
         """

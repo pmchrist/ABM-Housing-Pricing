@@ -42,11 +42,11 @@ class Housing(mesa.Model):
 
         # Variables for keeping track of statistics of the model
         self.population_size = 0
-        self.average_contentment = []
-        self.average_cash = []
-        self.average_house_price = []
-        self.deals = []
-        self.house_seekers = []
+        self.average_contentment = 0
+        self.average_cash = 0
+        self.average_house_price = 0
+        self.deals = 0
+        self.house_seekers = 0
 
         # Attributes
         self.contentment_threshold = contentment_threshold
@@ -75,7 +75,7 @@ class Housing(mesa.Model):
         neighbourhood.capacity = random.randint(1, 5)
         neighbourhood.avarage_salary = random.randint(10,20)
         neighbourhood.cost_of_living = random.randint(10,20)
-        neighbourhood.average_house_price_history.append(random.randint(50,150))
+        neighbourhood.average_neighbourhood_price = random.randint(50,150)
         self.schedule.add(neighbourhood)
 
     def add_neighbourhoods(self, fn='../data/Amsterdam_map_from_github.geojson'):
@@ -117,7 +117,7 @@ class Housing(mesa.Model):
         house = House(  unique_id="House_"+str(self.population_size+id), # FIND BETTER WAY FOR ID ASSIGNMENT
                         model=self, 
                         neighbourhood=neighbourhood, 
-                        initial_price=neighbourhood.average_house_price_history[-1], # MAYEBE ADD SOME RANDOMNESS TO THIS 
+                        initial_price=neighbourhood.average_neighbourhood_price, # MAYEBE ADD SOME RANDOMNESS TO THIS 
                         owner=person,
                         geometry=neighbourhood.geometry,
                         crs=neighbourhood.crs)
@@ -153,7 +153,7 @@ class Housing(mesa.Model):
             self.population_size += neighbourhood.capacity
             
         # Calculate average contentment
-        self.average_contentment.append(tmp_contentment / self.population_size)
+        self.average_contentment = tmp_contentment / self.population_size
         
         # Print initial parameters
         self.print_init()
@@ -189,8 +189,8 @@ class Housing(mesa.Model):
         print("---------------------- INITIAL STATS ----------------------")
         print("Total Wealth:                " + str(np.mean([person.cash for person in self.get_agents(Person)]) * self.population_size))
         print("Average Wealth:              " + str(np.mean([person.cash for person in self.get_agents(Person)])))
-        print("Average Contentment:         " + str(self.average_contentment[-1]))
-        print("Average House Price:         " + str(np.mean([house.price_history[-1] for house in self.get_agents(House)])))
+        print("Average Contentment:         " + str(self.average_contentment))
+        print("Average House Price:         " + str(np.mean([house.price for house in self.get_agents(House)])))
         print("House-Seekers:               " + str(len([person for person in self.get_agents(Person) if person.selling])))
         print("Fraction Unhappy/Happy:      " + str(len([person for person in self.get_agents(Person) if person.selling])/self.population_size) 
                 + " / " + str((self.population_size-len([person for person in self.get_agents(Person) if person.selling]))/self.population_size))
@@ -231,12 +231,12 @@ class Housing(mesa.Model):
         
         # Detrmine price of houses
         # LOOK AT THIS
-        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price_history[-1] # Money paid, based on the deviation from contentment score threshold
-        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price_history[-1]
+        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price # Money paid, based on the deviation from contentment score threshold
+        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
 
         # Update House prices and history
-        s1.house.price_history.append(house1_price)
-        s2.house.price_history.append(house2_price)
+        s1.house.price = house1_price
+        s2.house.price = house2_price
 
         # Cash transaction
         s1.cash += house1_price - house2_price
@@ -287,9 +287,9 @@ class Housing(mesa.Model):
             
             # Calculate new average price for each neighbourhood
             for house in neighbourhood.houses:
-                price_sum += house.price_history[-1]
+                price_sum += house.price
                 houses_num += 1
-            neighbourhood.average_house_price_history.append(price_sum / houses_num)
+            neighbourhood.average_neighbourhood_price = price_sum / houses_num
 
     def auction(self, sellers):
         """
@@ -311,7 +311,7 @@ class Housing(mesa.Model):
                     # If both parties are happy with the deal, save the potential match
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
                         # Check if agents can afford the houses
-                        if s1.cash + s1.house.price_history[-1] > s2.house.price_history[-1] and s2.cash + s2.house.price_history[-1] > s1.house.price_history[-1]:
+                        if s1.cash + s1.house.price > s2.house.price and s2.cash + s2.house.price > s1.house.price:
                             matches[s2] = new_s1_score
             
             # If there are any matches, perform the swap with the best match for s1
@@ -332,7 +332,7 @@ class Housing(mesa.Model):
                 sellers.remove(top_match)
 
         # Update number of deals statistic
-        self.deals.append(tmp_deals)
+        self.deals = tmp_deals
 
     def update_statistics(self, agents):
         """
@@ -346,33 +346,33 @@ class Housing(mesa.Model):
         tmp_contentment = 0
         for person in self.get_agents(Person):
             tmp_contentment += person.contentment
-        self.average_contentment.append(tmp_contentment / self.population_size)
+        self.average_contentment = tmp_contentment / self.population_size
         # Probably STD is more interesting thing to visualize
 
         # Recalculate average house price of entire city
-        self.average_house_price.append(np.mean([house.price_history[-1] for house in self.get_agents(House)]))
+        self.average_house_price= np.mean([house.price for house in self.get_agents(House)]) 
 
         # Recalculate the average amount of cash in the city
-        self.average_cash.append(np.mean([person.cash for person in self.get_agents(Person)]))
+        self.average_cash = np.mean([person.cash for person in self.get_agents(Person)])
 
         # Recalculate number of house seekers in the city
-        self.house_seekers.append(len([person for person in self.get_agents(Person) if person.selling]))
+        self.house_seekers = len([person for person in self.get_agents(Person) if person.selling])
 
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
 
         # Check if there are no more deals
-        if self.deals[-1] == 0:
+        if self.deals == 0:
             print("------------------- EQUILIBRIUM REACHED -------------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
             print("----------------------- FINAL STATS -----------------------")
-            print("Total Wealth:                " + str(self.average_cash[-1] * self.population_size))
-            print("Average Wealth:              " + str(self.average_cash[-1]))
-            print("Average Deals:               " + str(np.mean(self.deals)))
-            print("Average Contentment:         " + str(self.average_contentment[-1]))
-            print("Average House Price:         " + str(self.average_house_price[-1]))
-            print("House Seekers:               " + str(self.house_seekers[-1]))
-            print("Fraction Unhappy/Happy:      " + str(self.house_seekers[-1]/self.population_size) + " / " + str((self.population_size-self.house_seekers[-1])/self.population_size))
+            print("Total Wealth:                " + str(self.average_cash * self.population_size))
+            print("Average Wealth:              " + str(self.average_cash))
+            # print("Average Deals:               " + str(np.mean(self.deals)))
+            print("Average Contentment:         " + str(self.average_contentment))
+            print("Average House Price:         " + str(self.average_house_price))
+            print("House Seekers:               " + str(self.house_seekers))
+            print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) + " / " + str((self.population_size-self.house_seekers)/self.population_size))
             
             self.running = False
         else:
