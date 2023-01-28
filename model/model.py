@@ -77,10 +77,8 @@ class Housing(mesa.Model):
             neighbourhoods[i].crime_index = gemente_data.neighbourhood_crime[i]
             neighbourhoods[i].nature_index = gemente_data.neighbourhood_nature[i]
             neighbourhoods[i].average_neighbourhood_price = sum(gemente_data.target_neighbourhood_houses_price)/len(gemente_data.target_neighbourhood_houses_price)     # Average value of all neighbourhoods is a baseline for the house price
-
             self.schedule.add(neighbourhoods[i])
-
-            print(neighbourhoods[i])
+            #print(neighbourhoods[i])
 
 
     def add_neighbourhoods(self, fn='../data/Amsterdam_map_fin.json'):
@@ -108,6 +106,8 @@ class Housing(mesa.Model):
             neighbourhood: The neighbourhood the agents are assigned to.
         """
 
+        gemente_data = data_loader      # Getting real life data
+
         # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
         person = Person(unique_id="Person_"+str(self.population_size+id), 
                         model=self, 
@@ -115,20 +115,22 @@ class Housing(mesa.Model):
                         weight_shops = random.random(), 
                         weight_crime = random.random(), 
                         weight_nature = random.random(),
-                        money_loving=self.money_loving,
-                        starting_money=random.randint(200, 500), 
+                        money_loving = self.money_loving,
+                        # I JUST GAVE THEM A LOT OF MONEY IN THE BEGINNING TO WORK
+                        starting_money=10*sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
                         living_location=neighbourhood)
         self.schedule.add(person)
 
         # Assign houses to each of the Person agents
         house = House(  unique_id="House_"+str(self.population_size+id),
-                        model=self, 
+                        model=self,
+                        crs=neighbourhood.crs,
+                        geometry=neighbourhood.random_point(),
                         neighbourhood=neighbourhood, 
                         initial_price=neighbourhood.average_neighbourhood_price,
-                        owner=person,
-                        geometry=neighbourhood.geometry,
-                        crs=neighbourhood.crs)
+                        owner=person)
         self.schedule.add(house)
+        self.space.add_agents(house)
 
         return person, house
     

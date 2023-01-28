@@ -2,6 +2,7 @@ import random
 
 import mesa
 import mesa_geo as mg
+from shapely.geometry import Point
 
 class Person(mesa.Agent):
     """
@@ -54,7 +55,7 @@ class Person(mesa.Agent):
         # Use monetary value (how much it is worth) of a house in calculations too,
         # Also, use the income based on neighbourhood (neighbourhood.disposable_income)
         contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
-        # TEMPORARY FIX FOR THE COMPLEX BUG
+        # TEMPORARY FIX FOR THE COMPLEX NUMBER BUG
         if isinstance(contentment, complex):
             contentment = contentment.real
 
@@ -95,7 +96,7 @@ class Person(mesa.Agent):
         # Update Agent's net income and Contentment
         self.update_attributes()
 
-   
+
 class Neighbourhood(mg.GeoAgent):
     """
     GeoAgent representing a neighbourhood in the city.
@@ -160,15 +161,23 @@ class Neighbourhood(mg.GeoAgent):
         self.crime_index = self.crime_index + random.uniform(-sigma, sigma)
         self.nature_index = self.nature_index + random.uniform(-sigma, sigma)
 
+    # Get random location for house in neighbourhood
+    def random_point(self):
+        min_x, min_y, max_x, max_y = self.geometry.bounds
+        while not self.geometry.contains(
+            random_point := Point(
+                random.uniform(min_x, max_x), random.uniform(min_y, max_y)
+            )
+        ):
+            continue
+        return random_point
+
     def step(self):
         """
         Advance neighbourhood one step.
         """
 
-        #self.growth()
-        #self.noise()
-
-    
+        return
 
 
 class House(mg.GeoAgent):

@@ -1,5 +1,5 @@
 # What to run
-debug = True
+debug = False
 batch = False
 
 import mesa
@@ -9,18 +9,20 @@ from model import Housing
 from agents import Person, Neighbourhood, House
 from multiprocessing import freeze_support
 
+
 # To run visualization
 if not debug:
     from server import server
     server.launch()
 
+
 if batch and debug:
 
     #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
     # We should use some sampling to use paramter range for the complete running
-    params = {"num_houses": 0.5,
+    params = {"num_houses": 0.01,
             "noise": 0.0,
-            "contentment_threshold": 0.5,
+            "contentment_threshold": 15,
             "money_loving": 0.2}
 
     results = []
@@ -43,7 +45,6 @@ if batch and debug:
         print(results_df.keys())
 
 
-
 # Or, to not run visualization
 if debug:
     # Some values for statistics at the end
@@ -51,7 +52,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.2, noise=0.0, contentment_threshold=0.5, money_loving=0.2)
+    model = Housing(num_houses=0.01, noise=0.0, contentment_threshold=15.0, money_loving=0.2)
     for i in range(10):
         model.step()
 
