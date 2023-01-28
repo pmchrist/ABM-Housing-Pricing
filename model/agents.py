@@ -54,6 +54,9 @@ class Person(mesa.Agent):
         # Use monetary value (how much it is worth) of a house in calculations too,
         # Also, use the income based on neighbourhood (neighbourhood.disposable_income)
         contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
+        # TEMPORARY FIX FOR THE COMPLEX BUG
+        if isinstance(contentment, complex):
+            contentment = contentment.real
 
         return contentment
 

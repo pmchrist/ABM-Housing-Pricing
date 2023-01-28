@@ -13,17 +13,14 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_people: int, num_houses: int, noise: float, contentment_threshold: float, param_1: float, param_2: float, money_loving: float):
+    def __init__(self, num_houses: int, noise: float, contentment_threshold: float, money_loving: float):
         """
         Create a model for the housing market.
 
         Args:
-            num_people: Number of people in the model.
             num_houses: Number of houses in the model.
             noise: Noise term added to the parameters of a neighbourhood.
             contentment_threshold: Threshold for agent to start selling the house.
-            param_1: PARAMETER WE ARE ANALYZING.
-            param_2: PARAMETER WE ARE ANALYZING.
 
         Attributes:
             population_size: Counter for assiging People IDs.
@@ -37,8 +34,7 @@ class Housing(mesa.Model):
         """
 
         # Variables representing parameters for Person
-        self.param_1 = param_1
-        self.param_2 = param_2
+        self.num_houses = num_houses    # Population size as a fraction of the Real Life data
         self.money_loving = money_loving
 
         # Variables for keeping track of statistics of the model
@@ -60,7 +56,7 @@ class Housing(mesa.Model):
         self.running = True
 
         # Set up the model
-        self.setup_environment(num_people, num_houses)
+        self.setup_environment()
 
     def load_neighbourhood_data(self, neighbourhoods):
         """
@@ -74,7 +70,7 @@ class Housing(mesa.Model):
 
         for i in range(len(neighbourhoods)):
 
-            neighbourhoods[i].capacity = gemente_data.neighbourhood_households_amount[i]
+            neighbourhoods[i].capacity = int(gemente_data.neighbourhood_households_amount[i] * self.num_houses)
             neighbourhoods[i].disposable_income = gemente_data.neighbourhood_households_disposable_income[i]
             neighbourhoods[i].housing_quality = gemente_data.neighbourhood_housing_quality[i]
             neighbourhoods[i].shops_index = gemente_data.neighbourhood_shops[i]
@@ -136,13 +132,10 @@ class Housing(mesa.Model):
 
         return person, house
     
-    def setup_environment(self, num_people, num_houses):
+    def setup_environment(self):
         """
         Adds Neighbourhoods, Persons, and Houses agents to the model.
 
-        Args:
-            num_people: Number of people in the model.
-            num_houses: Number of houses in the model.
         """
 
         # Add Neighbourhoods GeoAgents to the model
@@ -193,8 +186,6 @@ class Housing(mesa.Model):
         print("Number of neighbourhoods:    " + str(len(self.get_agents(Neighbourhood))))
         print("Contentment threshold:       " + str(self.contentment_threshold))
         print("Noise:                       " + str(self.noise))
-        print("Parameter 1:                 " + str(self.param_1))
-        print("Parameter 2:                 " + str(self.param_2))
         
         print("---------------------- INITIAL STATS ----------------------")
         print("Total Wealth:                " + str(np.mean([person.cash for person in self.get_agents(Person)]) * self.population_size))

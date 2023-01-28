@@ -1,5 +1,5 @@
 # What to run
-debug = False
+debug = True
 batch = False
 
 import mesa
@@ -18,12 +18,9 @@ if batch and debug:
 
     #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
     # We should use some sampling to use paramter range for the complete running
-    params = {"num_people": 100,
-            "num_houses": 100,
+    params = {"num_houses": 0.5,
             "noise": 0.0,
-            "contentment_threshold": 2.0,
-            "param_1": 1.0,
-            "param_2": 1.0,
+            "contentment_threshold": 0.5,
             "money_loving": 0.2}
 
     results = []
@@ -34,7 +31,7 @@ if batch and debug:
         results = mesa.batch_run(
             Housing,
             parameters=params,
-            iterations=1000,
+            iterations=10,
             max_steps=20,
             number_processes=20,
             data_collection_period=1,
@@ -54,7 +51,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_people=100, num_houses=100, noise=0.0, contentment_threshold=0.5, param_1=1.0, param_2=1.0, money_loving=.2)
+    model = Housing(num_houses=0.2, noise=0.0, contentment_threshold=0.5, money_loving=0.2)
     for i in range(10):
         model.step()
 
@@ -72,19 +69,3 @@ if debug:
 
     # print("Population: ", population)
     # print("Unhappy Population %: ", unhappy_population/population)
-
-
-# Some available stuff to access:
-#agent.geometry
-#agent.Oppervlakte_m2
-## Available Params
-## CBS_Buurtcode,        Buurtcode,          Buurt,          Wijkcode,               Wijk,               Gebiedcode,     Gebied,     Stadsdeelcode,  Stadsdeel,  Oppervlakte_m2
-## Neighborhood code,    Neighborhood code,  Neighborhood,   Neighborhood Big code,  Neighbourhood Big,  Area code,      Area,       District code,  District,   Surface
-#
-## Neighbour Regions
-#neighbors = m.space.get_neighbors(agent)
-#print([a.unique_id for a in neighbors])
-
-## Regioins in close space
-#print([a.unique_id for a in m.space.get_neighbors_within_distance(agent, 500)])
-
