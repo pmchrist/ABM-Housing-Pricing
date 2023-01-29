@@ -20,7 +20,7 @@ model_params = {
     "num_houses": mesa.visualization.Slider("num_houses", 0.01, 0.01, 1.0, 0.01),
     "noise": mesa.visualization.Slider("noise", 0.0, 0.0, 0.2, 0.05),
     "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 15.0, 0.1, 20.0, 0.1),      # As it is not normalized for now, there is some space to play
-    "money_loving": mesa.visualization.Slider("money_loving", 0.2, 0.0, 1.0, 0.1),
+    "weigth_money": mesa.visualization.Slider("weigth_money", 0.2, 0.0, 1.0, 0.1),
 }
 
 

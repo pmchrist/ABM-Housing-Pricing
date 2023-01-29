@@ -13,7 +13,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_houses: int, noise: float, contentment_threshold: float, money_loving: float):
+    def __init__(self, num_houses: int, noise: float, contentment_threshold: float, weigth_money: float):
         """
         Create a model for the housing market.
 
@@ -35,7 +35,7 @@ class Housing(mesa.Model):
 
         # Variables representing parameters for Person
         self.num_houses = num_houses    # Population size as a fraction of the Real Life data
-        self.money_loving = money_loving
+        self.weigth_money = weigth_money
 
         # Variables for keeping track of statistics of the model
         self.population_size = 0
@@ -115,7 +115,7 @@ class Housing(mesa.Model):
                         weight_shops = random.random(), 
                         weight_crime = random.random(), 
                         weight_nature = random.random(),
-                        money_loving = self.money_loving,
+                        weigth_money = self.weigth_money,
                         # I JUST GAVE THEM A LOT OF MONEY IN THE BEGINNING TO WORK
                         starting_money=10*sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
                         living_location=neighbourhood)

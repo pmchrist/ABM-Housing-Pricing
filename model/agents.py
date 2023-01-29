@@ -9,7 +9,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, money_loving: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, weigth_money: float, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -28,7 +28,7 @@ class Person(mesa.Agent):
         self.weight_shops = weight_shops
         self.weight_crime = weight_crime
         self.weight_nature = weight_nature
-        self.money_loving = money_loving
+        self.weigth_money = weigth_money
         self.cash = starting_money
         self.neighbourhood = living_location
         self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -54,7 +54,7 @@ class Person(mesa.Agent):
         H = neighbourhood.housing_quality * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
         # Use monetary value (how much it is worth) of a house in calculations too,
         # Also, use the income based on neighbourhood (neighbourhood.disposable_income)
-        contentment = (H ** (1 - self.money_loving)) * (self.cash ** self.money_loving)
+        contentment = (H ** (1 - self.weigth_money)) * (self.cash ** self.weigth_money)
         # TEMPORARY FIX FOR THE COMPLEX NUMBER BUG
         if isinstance(contentment, complex):
             contentment = contentment.real

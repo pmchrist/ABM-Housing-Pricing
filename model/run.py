@@ -23,7 +23,7 @@ if batch and debug:
     params = {"num_houses": 0.01,
             "noise": 0.0,
             "contentment_threshold": 15,
-            "money_loving": 0.2}
+            "weigth_money": 0.2}
 
     results = []
 
@@ -52,7 +52,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.01, noise=0.0, contentment_threshold=15.0, money_loving=0.2)
+    model = Housing(num_houses=0.01, noise=0.0, contentment_threshold=15.0, weigth_money=0.2)
     for i in range(10):
         model.step()
 
