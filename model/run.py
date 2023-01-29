@@ -1,5 +1,5 @@
 # What to run
-debug = False
+debug = True
 batch = False
 
 import mesa
@@ -52,7 +52,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.01, noise=0.0, contentment_threshold=15.0, weigth_money=0.2)
+    model = Housing(num_houses=0.001, noise=0.0, contentment_threshold=15.0, weigth_money=0.2, housing_growth_rate=1.0, population_growth_rate=1.0)
     for i in range(10):
         model.step()
 
