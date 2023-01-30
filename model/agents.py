@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 import mesa
 import mesa_geo as mg
@@ -9,7 +10,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, weigth_money: float, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, starting_money: int, house: mg.GeoAgent, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -19,7 +20,6 @@ class Person(mesa.Agent):
             weight_shops: Weight for shops loving.
             weight_crime: Weight for crime loving.
             weight_nature: Weight for nature loving.
-            weigth_money: Weight for money loving.
             starting_money: Initial amount of money the agent has.
             living_location: Initial living neighbourhood of the agent represented as a GeoAgent.
         """
@@ -31,18 +31,19 @@ class Person(mesa.Agent):
         self.weight_shops = weight_shops
         self.weight_crime = weight_crime
         self.weight_nature = weight_nature
-        self.weigth_money = weigth_money
+        self.weight_salary = model.weight_salary       # How much house value affects person's Net Worth
+        self.weight_materialistic = model.weight_materialistic       # How much net worth affects person's happiness
 
         # Money attributes
         self.cash = starting_money
 
         # Living attributes
         self.neighbourhood = living_location
-        self.house = None
-        
+        self.house = house
+
         # Contentment attributes (check if agent is initialized homeless)
-        if living_location == None:
-            self.contentment = 0
+        if self.neighbourhood == None and self.house == None:
+            self.contentment = 0.5
             self.seeking = True
         else:
             self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -64,15 +65,25 @@ class Person(mesa.Agent):
         """
 
         # Check if agent is homeless
-        if self.house == None and self.neighbourhood == None:
-            contentment = 0
+        if self.house == None or self.neighbourhood == None:
+            contentment = 0.5
         else:
-            # STILL NOT COMPLETELY CORRECT
-            H = neighbourhood.housing_quality_index * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
-            # Use monetary value (how much it is worth) of a house in calculations too,
-            # Also, use the income based on neighbourhood (neighbourhood.disposable_income)
-            contentment = (H ** (1 - self.weigth_money)) * (self.cash ** self.weigth_money)
-            # TEMPORARY FIX FOR THE COMPLEX NUMBER BUG
+            # Neighbourhood Score
+            neighbourhood_component = neighbourhood.housing_quality_index * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
+            # Net worth score, with normalization
+            HOUSE_PRICE_RANGE = 735034.8834
+            HOUSE_PRICE_MIN = 167744.5583
+            INCOME_RANGE = 30961.77118
+            INCOME_MIN = 25119.11441
+            #money_component = (self.weight_salary) * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + (1.0 - self.weight_salary) * (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE
+            money_component = (self.weight_salary) * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + (1.0 - self.weight_salary) * (self.house.price + self.cash)/1_000_000
+
+            # Composite score
+            #print("Neighbourhood Contentment Component: ", neighbourhood_component)
+            #print("Money Contentment Component: ", money_component)
+            #print("\n")
+            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) + money_component ** (self.weight_materialistic)
+            # Fix for complex number bug
             if isinstance(contentment, complex):
                 contentment = contentment.real
 
@@ -96,9 +107,9 @@ class Person(mesa.Agent):
         # Check if agent is homeless
         if self.house == None and self.neighbourhood == None:
             # Update Contentment and seeking status
-            self.contentment = 0
+            self.contentment = 0.5
             self.seeking = True
-             # Update net income based on neighbourhood
+            # Update net income based on neighbourhood
             self.cash += random.randint(min([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]), max([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]))
         else:
             self.contentment = self.calculate_contentment(self.neighbourhood)
@@ -155,7 +166,7 @@ class Neighbourhood(mg.GeoAgent):
         self.capacity = None
         self.housing_growth_rate = None
         self.disposable_income = None
-        self.average_neighbourhood_price = 0
+        self.average_neighbourhood_price = None
         self.houses = []
 
         # Tracked statistics
@@ -163,10 +174,10 @@ class Neighbourhood(mg.GeoAgent):
     
     def __repr__(self):
         """
-        WHAT IS THIS CHRISTOS?
+        Tjhis function outputs object as a string
         """
 
-        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality={self.housing_quality}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
+        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality_index={self.housing_quality_index}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
 
     def add_houses(self, amount):
         """
@@ -238,6 +249,19 @@ class Neighbourhood(mg.GeoAgent):
         # Add new houses to the neighbourhood
         self.growth()
 
+        # Reset variables
+        price_sum = 0
+        houses_num = 0
+        
+        # Calculate new average price for each neighbourhood
+        for house in self.houses:
+            price_sum += house.price
+            houses_num += 1
+        self.average_neighbourhood_price = price_sum / houses_num
+
+        print("\n")
+        print(self.unique_id,": " , self.average_neighbourhood_price)
+
         return
 
 
@@ -246,7 +270,7 @@ class House(mg.GeoAgent):
     GeoAgent representing a house in a neighbourhood.
     """
     
-    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, owner: Person, geometry, crs):
+    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, geometry, crs):
         """
         Create a new house.
         
@@ -266,10 +290,10 @@ class House(mg.GeoAgent):
         # House attributes
         self.neighbourhood = neighbourhood
         self.price = initial_price
-        self.owner = owner
+        self.owner = None
 
         # Assign house to Person agent
-        if owner != None: owner.house = self
+        #if owner != None: owner.house = self        # HOW DOES HOUSE OWNS ITSELF???
 
         # Assign house to Neighbourhood agent
         neighbourhood.houses.append(self)

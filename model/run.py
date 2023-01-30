@@ -1,5 +1,5 @@
 # What to run
-debug = True
+debug = False
 batch = False
 
 import mesa
@@ -16,6 +16,7 @@ if not debug:
     server.launch()
 
 
+# Needs a lot of updates
 if batch and debug:
 
     #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
@@ -23,7 +24,7 @@ if batch and debug:
     params = {"num_houses": 0.01,
             "noise": 0.0,
             "contentment_threshold": 15,
-            "weigth_money": 0.2}
+            "weight_materialistic": 0.2}
 
     results = []
 
@@ -52,8 +53,8 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.001, noise=0.0, contentment_threshold=15.0, weigth_money=0.2, housing_growth_rate=1.0, population_growth_rate=1.0)
-    for i in range(10):
+    model = Housing(num_houses=0.1, noise=0.0, start_money_multiplier=3, contentment_threshold=1.1, weight_materialistic=0.7, weight_salary=0.3, housing_growth_rate=1.2, population_growth_rate=1.2)
+    for i in range(8):
         model.step()
 
     # Show who lives where (Was used for Debug)

@@ -19,8 +19,12 @@ class HousingElement(mesa.visualization.TextElement):
 model_params = {
     "num_houses": mesa.visualization.Slider("num_houses", 0.01, 0.01, 1.0, 0.01),
     "noise": mesa.visualization.Slider("noise", 0.0, 0.0, 0.2, 0.05),
-    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 15.0, 0.1, 20.0, 0.1),      # As it is not normalized for now, there is some space to play
-    "weigth_money": mesa.visualization.Slider("weigth_money", 0.2, 0.0, 1.0, 0.1),
+    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 1.5, 0.5, 2.5, 0.1),      # As it is not normalized for now, there is some space to play
+    "weight_materialistic": mesa.visualization.Slider("weight_materialistic", 0.4, 0.0, 1.0, 0.1),
+    "weight_salary": mesa.visualization.Slider("weight_salary", 0.3, 0.0, 1.0, 0.1),
+    "housing_growth_rate": mesa.visualization.Slider("housing_growth_rate", 1.0, 1.0, 2.0, 0.1),
+    "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.0, 1.0, 2.0, 0.1),
+    "start_money_multiplier": mesa.visualization.Slider("start_money_multiplier", 3, 0, 5, 1)
 }
 
 
@@ -30,11 +34,11 @@ def map_colors(agent):
     """
     portrayal = dict()
     if isinstance(agent, Neighbourhood):
-        if agent.moves > 256:
+        if agent.moves > 512:
             portrayal["color"] = "Red"
         elif agent.moves > 128:
             portrayal["color"] = "Orange"
-        elif agent.moves > 32:
+        elif agent.moves > 16:
             portrayal["color"] = "Blue"
         else:
             portrayal["color"] = "Grey"
@@ -42,7 +46,10 @@ def map_colors(agent):
         portrayal["radius"] = 1
         portrayal["shape"] = "circle"
         # Red houses are overpriced
-        portrayal["color"] = "Red" if agent.price>agent.neighbourhood.average_neighbourhood_price else "Green"
+        if agent.price > agent.neighbourhood.average_neighbourhood_price:
+            portrayal["color"] = "Red"
+        else:
+            portrayal["color"] = "Green"
     return portrayal
 
 

@@ -13,7 +13,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_houses: int, noise: float, contentment_threshold: float, weigth_money: float, housing_growth_rate: float, population_growth_rate: float):
+    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, contentment_threshold: float, weight_materialistic: float, weight_salary: float, housing_growth_rate: float, population_growth_rate: float):
         """
         Create a model for the housing market.
 
@@ -21,7 +21,7 @@ class Housing(mesa.Model):
             num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
             noise: Noise term added to the parameters of a neighbourhood.
             contentment_threshold: Threshold for agent to start looking for a new house.
-            weigth_money: The weight of money in the contentment function.
+            weight_materialistic: The weight of money in the contentment function.
             housing_growth_rate: The rate at which the number of houses in the model grows.
             population_growth_rate: The rate at which the number of people in the model grows.
 
@@ -40,9 +40,11 @@ class Housing(mesa.Model):
         self.num_houses = num_houses
         self.noise = noise
         self.contentment_threshold = contentment_threshold
-        self.weigth_money = weigth_money
+        self.weight_materialistic = weight_materialistic        # Used in Agent Contentment
+        self.weight_salary = weight_salary        # Used in Agent Contentment for Net Worth
         self.housing_growth_rate = housing_growth_rate
         self.population_growth_rate = population_growth_rate
+        self.start_money_multiplier = start_money_multiplier
         
         # Tracked statistics
         self.population_size = 0
@@ -116,28 +118,29 @@ class Housing(mesa.Model):
         # Load real-world data
         gemente_data = data_loader
 
-        # WEIGHTS ARE RANDOM ATM, AS IF THEY ARE FIXED NO EXCHANGES ARE HAPPENING
-        # Add Person agent to the model
-        person = Person(unique_id="Initial_Person_"+str(self.population_size+id), 
-                        model=self, 
-                        weight_house = random.random(), 
-                        weight_shops = random.random(), 
-                        weight_crime = random.random(), 
-                        weight_nature = random.random(),
-                        weigth_money = self.weigth_money,
-                        # I JUST GAVE THEM A LOT OF MONEY IN THE BEGINNING TO WORK
-                        starting_money=10*sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
-                        living_location=neighbourhood)
-        self.schedule.add(person)
-
         # Assign House to the model and add the Person agent as it's owner
         house = House(  unique_id="Initial_House_"+str(self.population_size+id),
                         model=self,
                         crs=neighbourhood.crs,
                         geometry=neighbourhood.random_point(),
                         neighbourhood=neighbourhood, 
-                        initial_price=neighbourhood.average_neighbourhood_price,
-                        owner=person)
+                        initial_price=neighbourhood.average_neighbourhood_price)
+
+        # Add Person agent to the model
+        neighbourhood_weights =  np.random.dirichlet(np.ones(4))        # They have to add up to 1
+        person = Person(unique_id="Initial_Person_"+str(self.population_size+id), 
+                        model=self, 
+                        weight_house = neighbourhood_weights[0],
+                        weight_shops = neighbourhood_weights[1],
+                        weight_crime = neighbourhood_weights[2],
+                        weight_nature = neighbourhood_weights[3],
+                        # start_money_multiplier is a coefficient for amount of annual salary
+                        starting_money = self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
+                        living_location=neighbourhood, house=house)
+
+        # Adding them all together
+        house.owner = person
+        self.schedule.add(person)
         self.schedule.add(house)
         self.space.add_agents(house)
     
@@ -237,21 +240,22 @@ class Housing(mesa.Model):
         # Determine new contentment scores
         new_s1_score = s1.calculate_contentment(s2.neighbourhood)
         new_s2_score = s2.calculate_contentment(s1.neighbourhood)
+
+        # Detrmine price of houses
+        new_house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price
+        new_house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
+
+        # Update Contentment
         s1.contentment = new_s1_score
         s2.contentment = new_s2_score
 
-        # Detrmine price of houses
-        # STILL NOT THE FINAL VERSION
-        house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price
-        house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
+        # Update Cash of People
+        s1.cash += new_house1_price - new_house2_price
+        s2.cash += new_house2_price - new_house1_price
 
         # Update House prices and history
-        s1.house.price = house1_price
-        s2.house.price = house2_price
-
-        # Cash transaction
-        s1.cash += house1_price - house2_price
-        s2.cash += house2_price - house1_price
+        s1.house.price = new_house1_price
+        s2.house.price = new_house2_price
 
         # Swapping neighbourhoods
         s1_destination = s2.neighbourhood
@@ -396,17 +400,19 @@ class Housing(mesa.Model):
         # Update population size
         self.population_size += new_agents
 
+        gemente_data = data_loader
+        neighbourhood_weights = np.random.dirichlet(np.ones(4))        # They have to add up to 1
         # Add new agents
         for i in range(1, new_agents):
             person = Person(unique_id="NewPerson_"+str(self.population_size+i), 
                             model=self, 
-                            weight_house = random.random(), 
-                            weight_shops = random.random(), 
-                            weight_crime = random.random(), 
-                            weight_nature = random.random(),
-                            weigth_money = self.weigth_money,
-                            # I JUST GAVE THEM A LOT OF MONEY IN THE BEGINNING TO WORK
-                            starting_money=random.randint(int(min([neighbourhood.average_neighbourhood_price for neighbourhood in self.get_agents(Neighbourhood)])), int(max([neighbourhood.average_neighbourhood_price for neighbourhood in self.get_agents(Neighbourhood)]))),
+                            weight_house = neighbourhood_weights[0],
+                            weight_shops = neighbourhood_weights[1],
+                            weight_crime = neighbourhood_weights[2],
+                            weight_nature = neighbourhood_weights[3],
+                            # I have doubled their init money, lets assume they are expats
+                            starting_money = 2 * self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
+                            house=None,
                             living_location=None)
             self.schedule.add(person)
 
@@ -444,6 +450,8 @@ class Housing(mesa.Model):
         # Recalculate average contentment
         # PROBABLY STD IS MORE INTERESTING THING TO VISUALIZE
         self.average_contentment = np.mean([person.contentment for person in self.get_agents(Person)])
+        #print("min_cont: ", np.min([person.contentment for person in self.get_agents(Person)]))
+        #print("max_cont: ", np.max([person.contentment for person in self.get_agents(Person)]))
 
         # Recalculate average house price of neighbourhoods
         self.update_average_house_price(self.get_agents(Neighbourhood))
@@ -460,15 +468,14 @@ class Housing(mesa.Model):
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
 
-        print(self.deals)
         # Check if there are no more deals
-        if self.deals < 50: # THIS NOT A GOOD WAY TO CHECK FOR EQUILIBRIUM
+        if self.deals < -1: # THIS NOT A GOOD WAY TO CHECK FOR EQUILIBRIUM
             print("------------------- EQUILIBRIUM REACHED -------------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
             print("----------------------- FINAL STATS -----------------------")
             print("Total Wealth:                " + str(self.average_cash * self.population_size))
             print("Average Wealth:              " + str(self.average_cash))
-            # print("Average Deals:               " + str(np.mean(self.deals)))
+            print("Average Deals:               " + str(np.mean(self.deals)))
             print("Average Contentment:         " + str(self.average_contentment))
             print("Average House Price:         " + str(self.average_house_price))
             print("House Seekers:               " + str(self.house_seekers))

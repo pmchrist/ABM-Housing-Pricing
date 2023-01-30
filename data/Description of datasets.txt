@@ -37,3 +37,6 @@ https://data.amsterdam.nl/datasets/bcy0MclnBpXyDQ/cijfers-veiligheidsindex/
 https://data.amsterdam.nl/datasets/aC7J2a-Y02ru3A/zorg-en-welzijn/
 https://data.amsterdam.nl/datasets/03G1QUEsOQ2Xkw/woningmarkt/
 https://data.amsterdam.nl/datasets/wTP7GhMShKY6ug/bodemgebruik/
+
+
+We normalized house prices and disposable income by dividing them over ideal value, which is 1M and 100k respectively
