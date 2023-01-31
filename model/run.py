@@ -53,8 +53,8 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.1, noise=0.0, start_money_multiplier=3, contentment_threshold=1.1, weight_materialistic=0.7, housing_growth_rate=1.2, population_growth_rate=1.2)
-    for i in range(8):
+    model = Housing(num_houses=0.01, noise=0.0, start_money_multiplier=3, contentment_threshold=1.5, weight_materialistic=0.6, housing_growth_rate=1.0, population_growth_rate=1.0)
+    for i in range(10):
         model.step()
 
     # Show who lives where (Was used for Debug)
@@ -69,5 +69,5 @@ if debug:
             if agent.contentment < agent.model.contentment_threshold:
                 unhappy_population += 1
 
-    # print("Population: ", population)
-    # print("Unhappy Population %: ", unhappy_population/population)
+    print("Population: ", population)
+    print("Unhappy Population %: ", unhappy_population/population)
