@@ -10,7 +10,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, weight_house: float, weight_shops: float, weight_crime: float, weight_nature: float, starting_money: int, house: mg.GeoAgent, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, starting_money: int, house: mg.GeoAgent, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -26,16 +26,20 @@ class Person(mesa.Agent):
 
         super().__init__(unique_id, model)
 
-        # Weigths for utility function
-        self.weight_house = weight_house
-        self.weight_shops = weight_shops
-        self.weight_crime = weight_crime
-        self.weight_nature = weight_nature
-        self.weight_salary = model.weight_salary       # How much house value affects person's Net Worth
-        self.weight_materialistic = model.weight_materialistic       # How much net worth affects person's happiness
-
-        # Money attributes
+        # Main param for Utility function
+        self.weight_materialistic = model.weight_materialistic          # How much net worth affects person's happiness
+        # Weigths for utility function Neighbourhood
+        neighbourhood_weights =  np.random.dirichlet(np.ones(4))        # They have to add up to 1
+        self.weight_house = neighbourhood_weights[0]
+        self.weight_shops = neighbourhood_weights[1]
+        self.weight_crime = neighbourhood_weights[2]
+        self.weight_nature = neighbourhood_weights[3]
+        # Weigths for utility function Money
         self.cash = starting_money
+        money_weights =  np.random.dirichlet(np.ones(3))                # They have to add up to 1
+        self.weight_cash = money_weights[0]
+        self.weight_salary = money_weights[1]
+        self.weight_house_value = money_weights[2]
 
         # Living attributes
         self.neighbourhood = living_location
@@ -75,9 +79,14 @@ class Person(mesa.Agent):
             HOUSE_PRICE_MIN = 167744.5583
             INCOME_RANGE = 30961.77118
             INCOME_MIN = 25119.11441
-            #money_component = (self.weight_salary) * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + (1.0 - self.weight_salary) * (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE
-            money_component = (self.weight_salary) * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + (1.0 - self.weight_salary) * (self.house.price + self.cash)/1_000_000
-
+            cash_div = self.neighbourhood.disposable_income * self.model.start_money_multiplier * 5     # param for cash normalization which depends on income of neighbourhood of living
+            money_component = (self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + 
+            self.weight_house_value * (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE + self.weight_cash * self.cash/cash_div)
+            if money_component < 0:
+                print("weight_salary", self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE)
+                print("weight_house_value", (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE)
+                print("weight_cash", self.weight_cash * self.cash/cash_div)
+                print("\n")
             # Composite score
             #print("Neighbourhood Contentment Component: ", neighbourhood_component)
             #print("Money Contentment Component: ", money_component)
@@ -88,6 +97,34 @@ class Person(mesa.Agent):
                 contentment = contentment.real
 
         return contentment
+
+    # This function is used only for calculation of the house price, as it depends only on environment quality
+    def calculate_contentment_for_house(self, neighbourhood):
+        """
+        Calculates the contentness of the agent based on a given neighbourhood.
+        This score is a derrivation of the Cobb-Douglas utility function.
+        
+        Formula: U = H ** a * M ** b
+        H: House contentness
+        M: Amount of cash
+        a: Weight for house loving
+        b: Weight for money loving
+        
+        Args:
+            neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
+        """
+
+        # Check if agent is homeless
+        if self.house == None or self.neighbourhood == None:
+            contentment = 0.5
+        else:
+            # Neighbourhood Score
+            contentment = neighbourhood.housing_quality_index * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
+            if isinstance(contentment, complex):
+                contentment = contentment.real
+
+        return contentment
+
 
     def get_seeking_status(self):
         """

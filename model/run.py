@@ -53,7 +53,7 @@ if debug:
     unhappy_population = 0
 
     # Run model for 10 steps
-    model = Housing(num_houses=0.1, noise=0.0, start_money_multiplier=3, contentment_threshold=1.1, weight_materialistic=0.7, weight_salary=0.3, housing_growth_rate=1.2, population_growth_rate=1.2)
+    model = Housing(num_houses=0.1, noise=0.0, start_money_multiplier=3, contentment_threshold=1.1, weight_materialistic=0.7, housing_growth_rate=1.2, population_growth_rate=1.2)
     for i in range(8):
         model.step()
 

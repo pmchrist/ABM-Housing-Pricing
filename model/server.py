@@ -21,7 +21,6 @@ model_params = {
     "noise": mesa.visualization.Slider("noise", 0.0, 0.0, 0.2, 0.05),
     "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 1.5, 0.5, 2.5, 0.1),      # As it is not normalized for now, there is some space to play
     "weight_materialistic": mesa.visualization.Slider("weight_materialistic", 0.4, 0.0, 1.0, 0.1),
-    "weight_salary": mesa.visualization.Slider("weight_salary", 0.3, 0.0, 1.0, 0.1),
     "housing_growth_rate": mesa.visualization.Slider("housing_growth_rate", 1.0, 1.0, 2.0, 0.1),
     "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.0, 1.0, 2.0, 0.1),
     "start_money_multiplier": mesa.visualization.Slider("start_money_multiplier", 3, 0, 5, 1)
@@ -34,11 +33,11 @@ def map_colors(agent):
     """
     portrayal = dict()
     if isinstance(agent, Neighbourhood):
-        if agent.moves > 512:
+        if agent.moves > 4096:
             portrayal["color"] = "Red"
-        elif agent.moves > 128:
+        elif agent.moves > 1024:
             portrayal["color"] = "Orange"
-        elif agent.moves > 16:
+        elif agent.moves > 256:
             portrayal["color"] = "Blue"
         else:
             portrayal["color"] = "Grey"

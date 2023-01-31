@@ -13,7 +13,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, contentment_threshold: float, weight_materialistic: float, weight_salary: float, housing_growth_rate: float, population_growth_rate: float):
+    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, contentment_threshold: float, weight_materialistic: float, housing_growth_rate: float, population_growth_rate: float):
         """
         Create a model for the housing market.
 
@@ -41,7 +41,6 @@ class Housing(mesa.Model):
         self.noise = noise
         self.contentment_threshold = contentment_threshold
         self.weight_materialistic = weight_materialistic        # Used in Agent Contentment
-        self.weight_salary = weight_salary        # Used in Agent Contentment for Net Worth
         self.housing_growth_rate = housing_growth_rate
         self.population_growth_rate = population_growth_rate
         self.start_money_multiplier = start_money_multiplier
@@ -127,16 +126,10 @@ class Housing(mesa.Model):
                         initial_price=neighbourhood.average_neighbourhood_price)
 
         # Add Person agent to the model
-        neighbourhood_weights =  np.random.dirichlet(np.ones(4))        # They have to add up to 1
         person = Person(unique_id="Initial_Person_"+str(self.population_size+id), 
-                        model=self, 
-                        weight_house = neighbourhood_weights[0],
-                        weight_shops = neighbourhood_weights[1],
-                        weight_crime = neighbourhood_weights[2],
-                        weight_nature = neighbourhood_weights[3],
+                        model=self, house=house, living_location=neighbourhood,
                         # start_money_multiplier is a coefficient for amount of annual salary
-                        starting_money = self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
-                        living_location=neighbourhood, house=house)
+                        starting_money = self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income))
 
         # Adding them all together
         house.owner = person
@@ -241,9 +234,9 @@ class Housing(mesa.Model):
         new_s1_score = s1.calculate_contentment(s2.neighbourhood)
         new_s2_score = s2.calculate_contentment(s1.neighbourhood)
 
-        # Detrmine price of houses
-        new_house1_price = (1 + new_s2_score - s2.contentment) * s1.house.price
-        new_house2_price = (1 + new_s1_score - s1.contentment) * s2.house.price
+        # Detrmine price of houses (**2 just to amplify change)
+        new_house1_price = (1 + s2.calculate_contentment_for_house(s1.neighbourhood) - s2.calculate_contentment_for_house(s2.neighbourhood))**2 * s1.house.price
+        new_house2_price = (1 + s1.calculate_contentment_for_house(s2.neighbourhood) - s1.calculate_contentment_for_house(s1.neighbourhood))**2 * s2.house.price
 
         # Update Contentment
         s1.contentment = new_s1_score
@@ -297,7 +290,10 @@ class Housing(mesa.Model):
                     # Check if both parties are happy with the deal
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
                         # Check if agents can afford the houses
-                        if s1.cash + s1.house.price > s2.house.price and s2.cash + s2.house.price > s1.house.price:
+
+                        new_house1_price = (1 + s2.calculate_contentment_for_house(s1.neighbourhood) - s2.calculate_contentment_for_house(s2.neighbourhood))**2 * s1.house.price        # Amount of money s2 is willing to pay for s1's house
+                        new_house2_price = (1 + s1.calculate_contentment_for_house(s2.neighbourhood) - s1.calculate_contentment_for_house(s1.neighbourhood))**2 * s2.house.price        # Amount of money s1 is willing to pay for s2's house
+                        if s1.cash + new_house1_price > new_house2_price and s2.cash + new_house2_price > new_house1_price:
                             # Save the potential match
                             matches[s2] = ((new_s1_score - s1.contentment) + (new_s2_score - s2.contentment)) / 2
             
@@ -401,19 +397,12 @@ class Housing(mesa.Model):
         self.population_size += new_agents
 
         gemente_data = data_loader
-        neighbourhood_weights = np.random.dirichlet(np.ones(4))        # They have to add up to 1
         # Add new agents
         for i in range(1, new_agents):
             person = Person(unique_id="NewPerson_"+str(self.population_size+i), 
-                            model=self, 
-                            weight_house = neighbourhood_weights[0],
-                            weight_shops = neighbourhood_weights[1],
-                            weight_crime = neighbourhood_weights[2],
-                            weight_nature = neighbourhood_weights[3],
+                            model=self, house=None, living_location=None,
                             # I have doubled their init money, lets assume they are expats
-                            starting_money = 2 * self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income),
-                            house=None,
-                            living_location=None)
+                            starting_money = 2 * self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income))
             self.schedule.add(person)
 
     def update_average_house_price(self, neighbourhoods):
@@ -469,7 +458,7 @@ class Housing(mesa.Model):
         """Checks if the model has reached equilibrium."""
 
         # Check if there are no more deals
-        if self.deals < -1: # THIS NOT A GOOD WAY TO CHECK FOR EQUILIBRIUM
+        if self.deals == 0: # THIS NOT A GOOD WAY TO CHECK FOR EQUILIBRIUM
             print("------------------- EQUILIBRIUM REACHED -------------------")
             print("After:                       " + str(self.schedule.steps) + " steps")
             print("----------------------- FINAL STATS -----------------------")
