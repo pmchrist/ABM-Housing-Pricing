@@ -10,7 +10,7 @@ class Person(mesa.Agent):
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, starting_money: int, house: mg.GeoAgent, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, starting_money: int, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -43,7 +43,7 @@ class Person(mesa.Agent):
 
         # Living attributes
         self.neighbourhood = living_location
-        self.house = house
+        self.house = None
 
         # Contentment attributes (check if agent is initialized homeless)
         if self.neighbourhood == None and self.house == None:
@@ -82,11 +82,11 @@ class Person(mesa.Agent):
             cash_div = self.neighbourhood.disposable_income * self.model.start_money_multiplier * 5     # param for cash normalization which depends on income of neighbourhood of living
             money_component = (self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + 
             self.weight_house_value * (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE + self.weight_cash * self.cash/cash_div)
-            if money_component < 0:
-                print("weight_salary", self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE)
-                print("weight_house_value", (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE)
-                print("weight_cash", self.weight_cash * self.cash/cash_div)
-                print("\n")
+            # if money_component < 0:
+            #     print("weight_salary", self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE)
+            #     print("weight_house_value", (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE)
+            #     print("weight_cash", self.weight_cash * self.cash/cash_div)
+            #     print("\n")
             # Composite score
             #print("Neighbourhood Contentment Component: ", neighbourhood_component)
             #print("Money Contentment Component: ", money_component)
@@ -141,10 +141,10 @@ class Person(mesa.Agent):
         Updates the agents attributes after every step.
         """
 
-        # Check if agent is homeless
+        # Check if agent is lives outside of Amsterdam
         if self.house == None and self.neighbourhood == None:
             # Update Contentment and seeking status
-            self.contentment = 0.5
+            self.contentment = 0
             self.seeking = True
             # Update net income based on neighbourhood
             self.cash += random.randint(min([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]), max([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]))
@@ -161,6 +161,8 @@ class Person(mesa.Agent):
 
         # Update Agent's net income and Contentment
         self.update_attributes()
+
+        return
 
 
 class Neighbourhood(mg.GeoAgent):
@@ -184,7 +186,6 @@ class Neighbourhood(mg.GeoAgent):
                 crime_index: Crime index of this neighbourhood.
                 nature_index: Nature index of this neighbourhood.
                 capacity: Max amount of houses in this neighbourhood.
-                housing_growth_rate: Housing growth rate of this neighbourhood.
                 disposable_income: Net average income of this neighbourhood.
                 average_house_price_history: Average house price in this neighbourhood.
                 houses: List of houses in this neighbourhood.
@@ -201,21 +202,13 @@ class Neighbourhood(mg.GeoAgent):
 
         # Neighbourhood attributes
         self.capacity = None
-        self.housing_growth_rate = None
         self.disposable_income = None
         self.average_neighbourhood_price = None
         self.houses = []
 
-        # Tracked statistics
+        # Tracked statisticsS
         self.moves = 0
     
-    def __repr__(self):
-        """
-        Tjhis function outputs object as a string
-        """
-
-        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality_index={self.housing_quality_index}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
-
     def add_houses(self, amount):
         """
         Adds houses to the neighbourhood.
@@ -225,14 +218,14 @@ class Neighbourhood(mg.GeoAgent):
         """
         
         # Add new houses to the neighbourhood
-        for i in range(1, amount):
+        for i in range(0, amount):
             house = House(  unique_id=self.unique_id+"_NewHouse_"+str(self.capacity+i),
                             model=self.model,
-                            crs=self.crs,
-                            geometry=self.random_point(),
                             neighbourhood=self, 
                             initial_price=self.average_neighbourhood_price,
-                            owner=None)
+                            owner=None,
+                            crs=self.crs,
+                            geometry=self.random_point())
             self.model.schedule.add(house)
             self.model.space.add_agents(house)
 
@@ -241,10 +234,13 @@ class Neighbourhood(mg.GeoAgent):
         Gradually increses the capacity of the neighbourhood, and adds houses to it.
         """
 
-        self.capacity = int(self.capacity * self.housing_growth_rate)
+        # Assign new capacity
+        self.capacity = int(self.capacity * self.model.housing_growth_rate)
 
+        # Calculate number of new houses
         new_houses = self.capacity - len(self.houses)
 
+        # If there is space for new houses, add them
         if new_houses > 0:
             self.add_houses(new_houses)
 
@@ -256,6 +252,7 @@ class Neighbourhood(mg.GeoAgent):
 
         # Noise term
         sigma = self.model.noise
+
         # Add noise to neighbourhood parameters
         self.housing_quality_index = self.housing_quality_index + random.uniform(-sigma, sigma)
         self.shops_index = self.shops_index + random.uniform(-sigma, sigma)
@@ -276,6 +273,13 @@ class Neighbourhood(mg.GeoAgent):
             continue
         return random_point
 
+    def __repr__(self):
+        """
+        This function outputs object as a string
+        """
+
+        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality_index={self.housing_quality_index}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
+
     def step(self):
         """
         Advance neighbourhood one step.
@@ -283,21 +287,9 @@ class Neighbourhood(mg.GeoAgent):
 
         # Update neighbourhood parameters
         self.noise()
+        
         # Add new houses to the neighbourhood
         self.growth()
-
-        # Reset variables
-        price_sum = 0
-        houses_num = 0
-        
-        # Calculate new average price for each neighbourhood
-        for house in self.houses:
-            price_sum += house.price
-            houses_num += 1
-        self.average_neighbourhood_price = price_sum / houses_num
-
-        print("\n")
-        print(self.unique_id,": " , self.average_neighbourhood_price)
 
         return
 
@@ -307,7 +299,7 @@ class House(mg.GeoAgent):
     GeoAgent representing a house in a neighbourhood.
     """
     
-    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, geometry, crs):
+    def __init__(self, unique_id: int, model: mesa.Model, neighbourhood: Neighbourhood, initial_price: int, owner: Person, geometry, crs):
         """
         Create a new house.
         
@@ -327,10 +319,7 @@ class House(mg.GeoAgent):
         # House attributes
         self.neighbourhood = neighbourhood
         self.price = initial_price
-        self.owner = None
-
-        # Assign house to Person agent
-        #if owner != None: owner.house = self        # HOW DOES HOUSE OWNS ITSELF???
+        self.owner = owner
 
         # Assign house to Neighbourhood agent
         neighbourhood.houses.append(self)
@@ -339,5 +328,6 @@ class House(mg.GeoAgent):
         """
         Advance house one step.
         """
+
         return
     

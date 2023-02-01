@@ -13,23 +13,27 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, contentment_threshold: float, weight_materialistic: float, housing_growth_rate: float, population_growth_rate: float):
+    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, contentment_threshold: float, weight_materialistic: float, housing_growth_rate: float, population_growth_rate: float, print_stats: bool = False):
         """
         Create a model for the housing market.
 
         Args:
             num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
             noise: Noise term added to the parameters of a neighbourhood.
+            start_money_multiplier: Multiplier for the starting money of a person.
             contentment_threshold: Threshold for agent to start looking for a new house.
             weight_materialistic: The weight of money in the contentment function.
             housing_growth_rate: The rate at which the number of houses in the model grows.
             population_growth_rate: The rate at which the number of people in the model grows.
 
         Attributes:
+            num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
             population_size: Counter for assiging People IDs.
             average_contentment: The average contentment of all agents.
+            average_cash: The average cash of all agents.
             average_house_price: The average house price of all houses.
             deals: The amount of exchanges happening on each step.
+            house_seekers: The amount of agents looking for a new house on each step.
             schedule: The scheduler for the model.
             space: The spatial environment for the model.
             datacollector: The datacollector for the model.
@@ -60,6 +64,7 @@ class Housing(mesa.Model):
 
         # Variable for stopping the model when equilibirum is reached.
         self.running = True
+        self.print_stats = print_stats
 
         # Set up the model
         self.setup_environment()
@@ -117,22 +122,25 @@ class Housing(mesa.Model):
         # Load real-world data
         gemente_data = data_loader
 
-        # Assign House to the model and add the Person agent as it's owner
-        house = House(  unique_id="Initial_House_"+str(self.population_size+id),
-                        model=self,
-                        crs=neighbourhood.crs,
-                        geometry=neighbourhood.random_point(),
-                        neighbourhood=neighbourhood, 
-                        initial_price=neighbourhood.average_neighbourhood_price)
-
         # Add Person agent to the model
         person = Person(unique_id="Initial_Person_"+str(self.population_size+id), 
-                        model=self, house=house, living_location=neighbourhood,
+                        model=self, 
+                        living_location=neighbourhood,
                         # start_money_multiplier is a coefficient for amount of annual salary
                         starting_money = self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income))
 
-        # Adding them all together
-        house.owner = person
+        # Assign House to the model and add the Person agent as it's owner
+        house = House(  unique_id="Initial_House_"+str(self.population_size+id),
+                        model=self,
+                        neighbourhood=neighbourhood, 
+                        initial_price=neighbourhood.average_neighbourhood_price,
+                        owner=person,
+                        crs=neighbourhood.crs,
+                        geometry=neighbourhood.random_point())
+        
+        # Assign House to the Person agent
+        person.house = house
+
         self.schedule.add(person)
         self.schedule.add(house)
         self.space.add_agents(house)
@@ -151,7 +159,7 @@ class Housing(mesa.Model):
 
         # Add Person and House agents to the model and assign them to a Neighbourhood
         for neighbourhood in neighbourhoods:
-            for i in range(1, neighbourhood.capacity):
+            for i in range(0, neighbourhood.capacity):
                 self.add_person_and_house(i, neighbourhood)
 
             # Update counter for People IDs
@@ -161,7 +169,7 @@ class Housing(mesa.Model):
         self.datacollector.collect(self)
 
         # Print initial parameters
-        self.print_init() # DONT CALL THIS FOR SENSITIVITY ANALYSIS
+        if self.print_stats: self.print_init() # DONT CALL THIS FOR SENSITIVITY ANALYSIS
     
     def print_init(self):
         """
@@ -181,13 +189,13 @@ class Housing(mesa.Model):
 
         # Print initial parameters and stats
         print("---------------------- INITIAL MODEL ----------------------")
-        print("Population size:             " + str(self.population_size))
+        print("Population size:             " + str(len(self.get_agents(Person))))
         print("Number of neighbourhoods:    " + str(len(self.get_agents(Neighbourhood))))
         print("Contentment threshold:       " + str(self.contentment_threshold))
         print("Noise:                       " + str(self.noise))
         
         print("---------------------- INITIAL STATS ----------------------")
-        print("Total Wealth:                " + str(np.mean([person.cash for person in self.get_agents(Person)]) * self.population_size))
+        print("Total Wealth:                " + str(sum([person.cash for person in self.get_agents(Person) if person.house])))
         print("Average Wealth:              " + str(np.mean([person.cash for person in self.get_agents(Person)])))
         print("Average Contentment:         " + str(np.mean([person.contentment for person in self.get_agents(Person)])))
         print("Average House Price:         " + str(np.mean([house.price for house in self.get_agents(House)])))
@@ -206,6 +214,27 @@ class Housing(mesa.Model):
         print("                            |[][]|     ")
         print("                            |[]..|     ")
         print("                            '--'''\n   ")
+
+    def print_output(self):
+        """
+        Prints the output of the model.
+        """
+
+        print("------------------- EQUILIBRIUM REACHED -------------------")
+        print("After:                       " + str(self.schedule.steps) + " steps")
+        print("----------------------- FINAL STATS -----------------------")
+        print("Total Wealth:                " + str(sum([person.cash for person in self.get_agents(Person) if person.house])))
+        print("Average Wealth:              " + str(self.average_cash))
+        # print("Average Deals:               " + str(np.mean(self.deals)))
+        print("Average Contentment:         " + str(self.average_contentment))
+        print("Average House Price:         " + str(self.average_house_price))
+        print("House Seekers:               " + str(self.house_seekers))
+        print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) + " / " + str((self.population_size-self.house_seekers)/self.population_size))
+        
+        print("Number of Houses:            " + str(len([house for house in self.get_agents(House)])))
+        print("Number of Empty Houses:      " + str(len([house for house in self.get_agents(House) if house.owner == None])))
+        print("Number of Homeless:          " + str(len([person for person in self.get_agents(Person) if person.house == None])))
+        
 
     def get_agents(self, agent_class):
         """
@@ -230,25 +259,21 @@ class Housing(mesa.Model):
             s2: Second Person agent.
         """
 
-        # Determine new contentment scores
-        new_s1_score = s1.calculate_contentment(s2.neighbourhood)
-        new_s2_score = s2.calculate_contentment(s1.neighbourhood)
-
         # Detrmine price of houses (**2 just to amplify change)
         new_house1_price = (1 + s2.calculate_contentment_for_house(s1.neighbourhood) - s2.calculate_contentment_for_house(s2.neighbourhood))**2 * s1.house.price
         new_house2_price = (1 + s1.calculate_contentment_for_house(s2.neighbourhood) - s1.calculate_contentment_for_house(s1.neighbourhood))**2 * s2.house.price
 
-        # Update Contentment
-        s1.contentment = new_s1_score
-        s2.contentment = new_s2_score
+        # Update House prices and history
+        s1.house.price = new_house1_price
+        s2.house.price = new_house2_price
 
         # Update Cash of People
         s1.cash += new_house1_price - new_house2_price
         s2.cash += new_house2_price - new_house1_price
 
-        # Update House prices and history
-        s1.house.price = new_house1_price
-        s2.house.price = new_house2_price
+        # Update Contentment
+        s1.contentment = s1.calculate_contentment(s2.neighbourhood)
+        s2.contentment = s2.calculate_contentment(s1.neighbourhood)
 
         # Swapping neighbourhoods
         s1_destination = s2.neighbourhood
@@ -259,6 +284,8 @@ class Housing(mesa.Model):
         # Swapping Houses
         s1_new_house = s2.house
         s2_new_house = s1.house
+        s1_new_house.owner = s1
+        s2_new_house.owner = s2
         s1.house = s1_new_house
         s2.house = s2_new_house
 
@@ -273,6 +300,7 @@ class Housing(mesa.Model):
         
         # Find all agents that are willing to sell and trade
         sellers = [person for person in self.get_agents(Person) if person.seeking and person.house is not None]
+        random.shuffle(sellers)
 
         # Temporary variable to keep track of number of deals
         tmp_deals = 0
@@ -288,11 +316,12 @@ class Housing(mesa.Model):
                     new_s2_score = s2.calculate_contentment(s1.neighbourhood)
 
                     # Check if both parties are happy with the deal
-                    if new_s1_score > s1.contentment and new_s2_score > s2.contentment:
-                        # Check if agents can afford the houses
-
+                    if new_s1_score > s1.contentment and new_s2_score > s2.contentment:    
+                        # Calculate the price of the houses
                         new_house1_price = (1 + s2.calculate_contentment_for_house(s1.neighbourhood) - s2.calculate_contentment_for_house(s2.neighbourhood))**2 * s1.house.price        # Amount of money s2 is willing to pay for s1's house
                         new_house2_price = (1 + s1.calculate_contentment_for_house(s2.neighbourhood) - s1.calculate_contentment_for_house(s1.neighbourhood))**2 * s2.house.price        # Amount of money s1 is willing to pay for s2's house
+                      
+                        # Check if agents can afford the houses
                         if s1.cash + new_house1_price > new_house2_price and s2.cash + new_house2_price > new_house1_price:
                             # Save the potential match
                             matches[s2] = ((new_s1_score - s1.contentment) + (new_s2_score - s2.contentment)) / 2
@@ -330,7 +359,7 @@ class Housing(mesa.Model):
         # Check if person already owns a house
         if person.house:
             # Update money spent
-            person.cash -= house.price + person.house.price
+            person.cash += person.house.price - house.price
 
             # Empty old house
             person.house.owner = None
@@ -347,7 +376,7 @@ class Housing(mesa.Model):
             person.cash -= house.price
             person.neighbourhood = house.neighbourhood
             person.house = house
-            person.house.owner = person
+            house.owner = person
 
     def sell_empty_houses(self):
         """
@@ -355,33 +384,40 @@ class Housing(mesa.Model):
         """
         
         # Find all house seekers and empty houses
-        house_seekers = [person for person in self.get_agents(Person) if person.seeking]
         empty_houses = [house for house in self.get_agents(House) if house.owner == None]
+        house_seekers = [person for person in self.get_agents(Person) if person.seeking]
+
+        # Check if there are any empty houses or house seekers
+        if len(empty_houses) == 0 or len(house_seekers) == 0: return
 
         # Shuffle the lists
-        random.shuffle(house_seekers)
         random.shuffle(empty_houses)
+        random.shuffle(house_seekers)
 
         # Temporary variable to keep track of number of deals
         tmp_deals = 0
         # Match house seekers with empty houses
-        if len(house_seekers) > 0 and len(empty_houses) > 0:
-            for seeker in house_seekers:
-                for house in empty_houses:
-                    
-                    # Check if seeker already owns a house
-                    if seeker.house:
-                        new_contentment = seeker.calculate_contentment(house.neighbourhood)
-                        # If seeker is happy with the new house and can afford it, move in
-                        if new_contentment > seeker.contentment:
-                            if seeker.cash + seeker.house.price > house.price:
-                                self.movein_empty(seeker, house)
-                                tmp_deals += 1
-                    else:
-                        # If homeless seeker can afford the house, move in
-                        if seeker.cash > house.price:
+        for house in empty_houses:
+            for seeker in house_seekers:      
+
+                # Check if seeker already owns a house
+                if seeker.house:
+                    new_contentment = seeker.calculate_contentment(house.neighbourhood)
+
+                    # If seeker is happy with the new house and can afford it, move in
+                    if new_contentment > seeker.contentment:
+                        if seeker.cash + seeker.house.price > house.price:
                             self.movein_empty(seeker, house)
                             tmp_deals += 1
+
+                            # Go to next avalible house
+                            break
+                else:
+                    # If seeker (from outside Amsterdam) can afford the house, move in
+                    if seeker.cash > house.price:
+                        self.movein_empty(seeker, house)
+                        tmp_deals += 1
+                        break
         
         # Update number of deals statistic
         self.deals += tmp_deals
@@ -393,19 +429,23 @@ class Housing(mesa.Model):
 
         # Calculate number of new agents
         new_agents = int(self.population_size * self.population_growth_rate) - self.population_size
+        
         # Update population size
         self.population_size += new_agents
 
+        # Load real-world data
         gemente_data = data_loader
+
         # Add new agents
-        for i in range(1, new_agents):
+        for i in range(0, new_agents):
             person = Person(unique_id="NewPerson_"+str(self.population_size+i), 
-                            model=self, house=None, living_location=None,
+                            model=self, 
+                            living_location=None,
                             # I have doubled their init money, lets assume they are expats
                             starting_money = 2 * self.start_money_multiplier * sum(gemente_data.neighbourhood_households_disposable_income)/len(gemente_data.neighbourhood_households_disposable_income))
             self.schedule.add(person)
 
-    def update_average_house_price(self, neighbourhoods):
+    def update_average_neighbourhood_price(self, neighbourhoods):
         """
         Updates average house price for each neighbourhood.
 
@@ -437,44 +477,29 @@ class Housing(mesa.Model):
         """
 
         # Recalculate average contentment
-        # PROBABLY STD IS MORE INTERESTING THING TO VISUALIZE
         self.average_contentment = np.mean([person.contentment for person in self.get_agents(Person)])
-        #print("min_cont: ", np.min([person.contentment for person in self.get_agents(Person)]))
-        #print("max_cont: ", np.max([person.contentment for person in self.get_agents(Person)]))
 
         # Recalculate average house price of neighbourhoods
-        self.update_average_house_price(self.get_agents(Neighbourhood))
+        self.update_average_neighbourhood_price(self.get_agents(Neighbourhood))
         
         # Recalculate average house price of entire city
-        self.average_house_price= np.mean([house.price for house in self.get_agents(House)]) 
+        self.average_house_price = np.mean([house.price for house in self.get_agents(House)]) 
 
         # Recalculate the average amount of cash in the city
-        self.average_cash = np.mean([person.cash for person in self.get_agents(Person)])
+        self.average_cash = np.mean([person.cash for person in self.get_agents(Person) if person.house])
 
         # Recalculate number of house seekers in the city
         self.house_seekers = len([person for person in self.get_agents(Person) if person.seeking])
 
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
-
+        
         # Check if there are no more deals
-        if self.deals == 0: # THIS NOT A GOOD WAY TO CHECK FOR EQUILIBRIUM
-            print("------------------- EQUILIBRIUM REACHED -------------------")
-            print("After:                       " + str(self.schedule.steps) + " steps")
-            print("----------------------- FINAL STATS -----------------------")
-            print("Total Wealth:                " + str(self.average_cash * self.population_size))
-            print("Average Wealth:              " + str(self.average_cash))
-            print("Average Deals:               " + str(np.mean(self.deals)))
-            print("Average Contentment:         " + str(self.average_contentment))
-            print("Average House Price:         " + str(self.average_house_price))
-            print("House Seekers:               " + str(self.house_seekers))
-            print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) + " / " + str((self.population_size-self.house_seekers)/self.population_size))
-            
-            print("Number of Houses:            " + str(len([house for house in self.get_agents(House)])))
-            print("Number of Empty Houses:      " + str(len([house for house in self.get_agents(House) if house.owner == None])))
-            print("Number of Homeless:          " + str(len([person for person in self.get_agents(Person) if person.house == None])))
-           
+        if self.deals < 0:
             self.running = False
+
+            # Print output
+            if self.print_stats: self.print_output()
         else:
             self.running = True
 
@@ -498,7 +523,7 @@ class Housing(mesa.Model):
 
         # Advance all Agents by one step
         self.schedule.step()
-        
+
         # Updating statistics and collecting data
         self.update_statistics(self.schedule.agents)
         self.datacollector.collect(self)
