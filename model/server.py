@@ -21,10 +21,10 @@ model_params = {
     "noise": mesa.visualization.Slider("noise", 0.0, 0.0, 0.2, 0.05),
     "start_money_multiplier": mesa.visualization.Slider("start_money_multiplier", 2, 0, 5, 1),
     "start_money_multiplier_newcomers": mesa.visualization.Slider("start_money_multiplier_newcomers", 2, 0, 5, 1),
-    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 1.1, 0.0, 2.0, 0.1),      # As it is not normalized for now, there is some space to play
+    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 0.5, 0.0, 1.0, 0.1),      # As it is not normalized for now, there is some space to play
     "weight_materialistic": mesa.visualization.Slider("weight_materialistic", 0.5, 0.0, 1.0, 0.1),
     "housing_growth_rate": mesa.visualization.Slider("housing_growth_rate", 1.0, 1.0, 1.2, 0.01),
-    "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.0, 1.2, 2.0, 0.01),
+    "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.00, 1.0, 1.2, 0.01),
 }
 
 # Old Portrayal (Deals and House Price)
@@ -59,11 +59,11 @@ def map_colors_house_price_vs_salary(agent):
     """
     portrayal = dict()
     if isinstance(agent, Neighbourhood):
-        if agent.average_neighbourhood_price/agent.model.average_house_price > 1.1:
+        if agent.average_neighbourhood_price/543204 > 1.05:
             portrayal["color"] = "Red"
-        elif agent.average_neighbourhood_price/agent.model.average_house_price > 1.05:
+        elif agent.average_neighbourhood_price/543204 > 1.02:
             portrayal["color"] = "Orange"
-        elif agent.average_neighbourhood_price/agent.model.average_house_price > 0.95:
+        elif agent.average_neighbourhood_price/543204 >0.98:
             portrayal["color"] = "Green"
         else:
             portrayal["color"] = "Blue"

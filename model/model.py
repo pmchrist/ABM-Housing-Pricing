@@ -190,7 +190,8 @@ class Housing(mesa.Model):
 
             # Update counter for People IDs
             self.population_size += neighbourhood.capacity
-
+        # Upd contentment with new people
+        self.update_average_neighbourhood_contentment(self.get_agents(Neighbourhood))
         self.update_model_params()
 
         # Collecting data   
@@ -561,7 +562,7 @@ class Housing(mesa.Model):
         """Checks if the model has reached equilibrium."""
         
         # Check if there are no more deals
-        if self.deals < 0:          # Is disabled, because now that we have growth new deals might always happen
+        if self.deals == 0:          # Is disabled, because now that we have growth new deals might always happen
             self.running = False
         else:
             self.running = True

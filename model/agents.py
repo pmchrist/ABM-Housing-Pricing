@@ -96,7 +96,7 @@ class Person(mesa.Agent):
             # Combining them
             keeper_money.append(money_component)
             keeper_neigh.append(neighbourhood_component)
-            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) + money_component ** (self.weight_materialistic)
+            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
         # Fix for complex number bug
         if isinstance(contentment, complex):
             contentment = contentment.real
