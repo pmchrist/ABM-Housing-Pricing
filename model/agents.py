@@ -5,12 +5,19 @@ import mesa
 import mesa_geo as mg
 from shapely.geometry import Point
 
+# Stable Variables througout simulation
+HOUSE_PRICE_MEAN = 543204       # Comes from Data
+INCOME_MEAN = 68238             # Comes from Data/Distribution
+
+keeper_money = []
+keeper_neigh = []
+
 class Person(mesa.Agent):
     """
     Agent representing a person on the housing market of the city.
     """
 
-    def __init__(self, unique_id: int, model: mesa.Model, starting_money: int, living_location: mg.GeoAgent):
+    def __init__(self, unique_id: int, model: mesa.Model, living_location: mg.GeoAgent):
         """Create a new agent (person) for the housing market.
 
         Args:
@@ -34,26 +41,23 @@ class Person(mesa.Agent):
         self.weight_shops = neighbourhood_weights[1]
         self.weight_crime = neighbourhood_weights[2]
         self.weight_nature = neighbourhood_weights[3]
+        # Params for wealth evaluation
+        salary = np.random.lognormal(11.1307, 0.1358)                # Getting salary from overall distribution
+        self.cash = self.model.start_money_multiplier * salary
+        self.salary = salary
         # Weigths for utility function Money
-        self.cash = starting_money
         money_weights =  np.random.dirichlet(np.ones(3))                # They have to add up to 1
         self.weight_cash = money_weights[0]
         self.weight_salary = money_weights[1]
         self.weight_house_value = money_weights[2]
-
         # Living attributes
         self.neighbourhood = living_location
         self.house = None
+        # Values we keep an eye on
+        self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
+        self.seeking = self.get_seeking_status() 
 
-        # Contentment attributes (check if agent is initialized homeless)
-        if self.neighbourhood == None and self.house == None:
-            self.contentment = 0.5
-            self.seeking = True
-        else:
-            self.contentment = self.calculate_contentment(self.neighbourhood)
-            self.seeking = self.get_seeking_status() 
-
-    def calculate_contentment(self, neighbourhood):
+    def calculate_contentment(self, neighbourhood, house):
         """
         Calculates the contentness of the agent based on a given neighbourhood.
         This score is a derrivation of the Cobb-Douglas utility function.
@@ -68,63 +72,36 @@ class Person(mesa.Agent):
             neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
         """
 
+        # Parameter which is static but depends on model, so we have to calculate it each time
+        CASH_MEAN = self.model.start_money_multiplier * INCOME_MEAN
+
         # Check if agent is homeless
-        if self.house == None or self.neighbourhood == None:
-            contentment = 0.5
-        else:
-            # Neighbourhood Score
-            neighbourhood_component = neighbourhood.housing_quality_index * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
-            # Net worth score, with normalization
-            HOUSE_PRICE_RANGE = 735034.8834
-            HOUSE_PRICE_MIN = 167744.5583
-            INCOME_RANGE = 30961.77118
-            INCOME_MIN = 25119.11441
-            cash_div = self.neighbourhood.disposable_income * self.model.start_money_multiplier * 5     # param for cash normalization which depends on income of neighbourhood of living
-            money_component = (self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE + 
-            self.weight_house_value * (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE + self.weight_cash * self.cash/cash_div)
-            # if money_component < 0:
-            #     print("weight_salary", self.weight_salary * (self.neighbourhood.disposable_income - INCOME_MIN)/INCOME_RANGE)
-            #     print("weight_house_value", (self.house.price - HOUSE_PRICE_MIN)/HOUSE_PRICE_RANGE)
-            #     print("weight_cash", self.weight_cash * self.cash/cash_div)
-            #     print("\n")
-            # Composite score
-            #print("Neighbourhood Contentment Component: ", neighbourhood_component)
-            #print("Money Contentment Component: ", money_component)
-            #print("\n")
+        if house == None or neighbourhood == None:
+            neighbourhood_component = 0
+            money_component = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4 + self.weight_cash * 0.6*(self.cash / CASH_MEAN)**0.4
             contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) + money_component ** (self.weight_materialistic)
-            # Fix for complex number bug
-            if isinstance(contentment, complex):
-                contentment = contentment.real
-
-        return contentment
-
-    # This function is used only for calculation of the house price, as it depends only on environment quality
-    def calculate_contentment_for_house(self, neighbourhood):
-        """
-        Calculates the contentness of the agent based on a given neighbourhood.
-        This score is a derrivation of the Cobb-Douglas utility function.
-        
-        Formula: U = H ** a * M ** b
-        H: House contentness
-        M: Amount of cash
-        a: Weight for house loving
-        b: Weight for money loving
-        
-        Args:
-            neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
-        """
-
-        # Check if agent is homeless
-        if self.house == None or self.neighbourhood == None:
-            contentment = 0.5
         else:
-            # Neighbourhood Score
-            contentment = neighbourhood.housing_quality_index * self.weight_house + neighbourhood.shops_index * self.weight_shops + neighbourhood.crime_index * self.weight_crime + neighbourhood.nature_index * self.weight_nature
-            if isinstance(contentment, complex):
-                contentment = contentment.real
+            # Neighbourhood Score, weights are already normalized
+            neighbourhood_component_1 = neighbourhood.housing_quality_index * self.weight_house
+            neighbourhood_component_2 = neighbourhood.shops_index * self.weight_shops
+            neighbourhood_component_3 = neighbourhood.crime_index * self.weight_crime
+            neighbourhood_component_4 = neighbourhood.nature_index * self.weight_nature
+            neighbourhood_component = neighbourhood_component_1 + neighbourhood_component_2 + neighbourhood_component_3 + neighbourhood_component_4
+            # Wealth Score, with Normalization
+            # All money params follow the non linear diminishing utility function. Salary&Cash: 0.6*x^0.4, House: 0.4*x^0.6
+            wealth_component_1 = self.weight_house  * 0.4*(house.price / HOUSE_PRICE_MEAN)**0.6           # House price mean comes from Dataset, and is Init value
+            wealth_component_2 = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4                # Salary mean comes from distribution
+            wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from Init_Model_Coeff*Mean_Salary, and is Init value
+            money_component = wealth_component_1 + wealth_component_2 + wealth_component_3
+            # Combining them
+            keeper_money.append(money_component)
+            keeper_neigh.append(neighbourhood_component)
+            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) + money_component ** (self.weight_materialistic)
+        # Fix for complex number bug
+        if isinstance(contentment, complex):
+            contentment = contentment.real
 
         return contentment
-
 
     def get_seeking_status(self):
         """
@@ -142,16 +119,19 @@ class Person(mesa.Agent):
         """
 
         # Check if agent is lives outside of Amsterdam
-        if self.house == None and self.neighbourhood == None:
-            # Update Contentment and seeking status
-            self.contentment = 0
+        if self.house == None or self.neighbourhood == None:
+            # Update Cash, Contentment and seeking status
+            self.cash += self.salary
+            self.contentment = self.calculate_contentment(None, None)
             self.seeking = True
-            # Update net income based on neighbourhood
-            self.cash += random.randint(min([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]), max([neighbourhood.disposable_income for neighbourhood in self.model.get_agents(Neighbourhood)]))
+        # If is already in Amsterdam
         else:
-            self.contentment = self.calculate_contentment(self.neighbourhood)
+            self.cash += self.salary - self.neighbourhood.expenses
+            self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
             self.seeking = self.get_seeking_status()
-            self.cash += self.neighbourhood.disposable_income   
+            # If close to bankruptcy
+            if self.cash < 2*self.neighbourhood.expenses:    # Available money is less than double cost of annual living
+                self.seeking = True
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
@@ -202,8 +182,9 @@ class Neighbourhood(mg.GeoAgent):
 
         # Neighbourhood attributes
         self.capacity = None
-        self.disposable_income = None
+        self.expenses = None
         self.average_neighbourhood_price = None
+        self.average_neighbourhood_contentment = 1.0        # SHOULD BE INIT OTHERWISE, JUST DOESNT SHOW UP CORRECTLY ON STATS TABLE
         self.houses = []
 
         # Tracked statisticsS
@@ -261,7 +242,7 @@ class Neighbourhood(mg.GeoAgent):
 
     def random_point(self):
         """
-        Get random location for house in neighbourhood
+        Get random location for house's visualization in neighbourhood
         """
 
         min_x, min_y, max_x, max_y = self.geometry.bounds
@@ -286,7 +267,7 @@ class Neighbourhood(mg.GeoAgent):
         """
 
         # Update neighbourhood parameters
-        self.noise()
+        if self.model.noise: self.noise()
         
         # Add new houses to the neighbourhood
         self.growth()

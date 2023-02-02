@@ -17,27 +17,28 @@ class HousingElement(mesa.visualization.TextElement):
 
 # Parameters of the model
 model_params = {
-    "num_houses": mesa.visualization.Slider("num_houses", 0.01, 0.01, 1.0, 0.01),
+    "num_houses": mesa.visualization.Slider("num_houses", 0.001, 0.001, 0.01, 0.001),
     "noise": mesa.visualization.Slider("noise", 0.0, 0.0, 0.2, 0.05),
-    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 1.5, 0.5, 2.5, 0.1),      # As it is not normalized for now, there is some space to play
-    "weight_materialistic": mesa.visualization.Slider("weight_materialistic", 0.4, 0.0, 1.0, 0.1),
-    "housing_growth_rate": mesa.visualization.Slider("housing_growth_rate", 1.0, 1.0, 2.0, 0.1),
-    "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.0, 1.0, 2.0, 0.1),
-    "start_money_multiplier": mesa.visualization.Slider("start_money_multiplier", 3, 0, 5, 1)
+    "start_money_multiplier": mesa.visualization.Slider("start_money_multiplier", 2, 0, 5, 1),
+    "start_money_multiplier_newcomers": mesa.visualization.Slider("start_money_multiplier_newcomers", 2, 0, 5, 1),
+    "contentment_threshold": mesa.visualization.Slider("contentment_threshold", 1.1, 0.0, 2.0, 0.1),      # As it is not normalized for now, there is some space to play
+    "weight_materialistic": mesa.visualization.Slider("weight_materialistic", 0.5, 0.0, 1.0, 0.1),
+    "housing_growth_rate": mesa.visualization.Slider("housing_growth_rate", 1.0, 1.0, 1.2, 0.01),
+    "population_growth_rate": mesa.visualization.Slider("population_growth_rate", 1.0, 1.2, 2.0, 0.01),
 }
 
-
-def map_colors(agent):
+# Old Portrayal (Deals and House Price)
+def map_colors_deals_vs_house_price(agent):
     """
     Portrayal Method for canvas
     """
     portrayal = dict()
     if isinstance(agent, Neighbourhood):
-        if agent.moves > 4096:
+        if agent.moves/agent.capacity > 1.0:
             portrayal["color"] = "Red"
-        elif agent.moves > 1024:
+        elif agent.moves/agent.capacity > 0.5:
             portrayal["color"] = "Orange"
-        elif agent.moves > 256:
+        elif agent.moves/agent.capacity > 0.2:
             portrayal["color"] = "Blue"
         else:
             portrayal["color"] = "Grey"
@@ -51,13 +52,62 @@ def map_colors(agent):
             portrayal["color"] = "Green"
     return portrayal
 
+# New Portrayal (Neighbourhood Prices and Salary)
+def map_colors_house_price_vs_salary(agent):
+    """
+    Portrayal Method for canvas
+    """
+    portrayal = dict()
+    if isinstance(agent, Neighbourhood):
+        if agent.average_neighbourhood_price/agent.model.average_house_price > 1.1:
+            portrayal["color"] = "Red"
+        elif agent.average_neighbourhood_price/agent.model.average_house_price > 1.05:
+            portrayal["color"] = "Orange"
+        elif agent.average_neighbourhood_price/agent.model.average_house_price > 0.95:
+            portrayal["color"] = "Green"
+        else:
+            portrayal["color"] = "Blue"
+
+    elif isinstance(agent, House):
+        portrayal["radius"] = 1
+        portrayal["shape"] = "circle"
+        if agent.owner == None: portrayal["color"] = "Grey"
+        else:
+            if agent.owner.salary/68238 > 1.4:
+                portrayal["color"] = "Green"
+            elif agent.owner.salary/68238 > 1.0:
+                portrayal["color"] = "Blue"
+            elif agent.owner.salary/68238 > 0.6:
+                portrayal["color"] = "Orange"
+            else:
+                portrayal["color"] = "Red"
+
+    return portrayal
+
 
 housing_element = HousingElement()
 map_element = mg.visualization.MapModule(
-    map_colors, [52.3676, 4.9041], 11, tiles=xyz.CartoDB.Positron
+    map_colors_house_price_vs_salary, [52.3676, 4.9041], 11, tiles=xyz.CartoDB.Positron
 )
+
 deals_chart = mesa.visualization.ChartModule([{"Label": "Deals", "Color": "Black"}])
-contentment_chart = mesa.visualization.ChartModule([{"Label": "Average Contentment", "Color": "Black"}])
+price_chart = mesa.visualization.ChartModule([{"Label": "Average House Price Centrum", "Color": "#e1324a"},
+                                            {"Label": "Average House Price Oost", "Color": "#328637"},
+                                            {"Label": "Average House Price NieuwWest", "Color": "#fec8f1"},
+                                            {"Label": "Average House Price Zuidoost", "Color": "#1279b2"},
+                                            {"Label": "Average House Price Noord", "Color": "#a4fbfd"},
+                                            {"Label": "Average House Price West", "Color": "#f2c647"},
+                                            {"Label": "Average House Price Zuid", "Color": "#76c639"}]
+                                            )
+contentment_chart = mesa.visualization.ChartModule([{"Label": "Average Contentment Centrum", "Color": "#e1324a"},
+                                            {"Label": "Average Contentment Oost", "Color": "#328637"},
+                                            {"Label": "Average Contentment NieuwWest", "Color": "#fec8f1"},
+                                            {"Label": "Average Contentment Zuidoost", "Color": "#1279b2"},
+                                            {"Label": "Average Contentment Noord", "Color": "#a4fbfd"},
+                                            {"Label": "Average Contentment West", "Color": "#f2c647"},
+                                            {"Label": "Average Contentment Zuid", "Color": "#76c639"}]
+                                            )
+
 server = mesa.visualization.ModularServer(
-    Housing, [map_element, housing_element, deals_chart, contentment_chart], "Housing Market", model_params
+    Housing, [map_element, housing_element, deals_chart, price_chart, contentment_chart], "Housing Market", model_params
 )
