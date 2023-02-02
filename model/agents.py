@@ -42,7 +42,7 @@ class Person(mesa.Agent):
         self.weight_crime = neighbourhood_weights[2]
         self.weight_nature = neighbourhood_weights[3]
         # Params for wealth evaluation
-        salary = np.random.lognormal(11.1307, 0.1358)                # Getting salary from overall distribution
+        salary = np.random.lognormal(11.130763621035388, 0.42361311973300236)                # Getting salary from overall distribution
         self.cash = self.model.start_money_multiplier * salary
         self.salary = salary
         # Weigths for utility function Money
