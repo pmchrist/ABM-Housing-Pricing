@@ -73,7 +73,7 @@ class Person(mesa.Agent):
         """
 
         # Parameter which is static but depends on model, so we have to calculate it each time
-        CASH_MEAN = self.model.start_money_multiplier * INCOME_MEAN
+        CASH_MEAN = (self.model.start_money_multiplier + 1) * INCOME_MEAN
 
         # Check if agent is homeless
         if house == None or neighbourhood == None:
@@ -129,9 +129,15 @@ class Person(mesa.Agent):
             self.cash += self.salary - self.neighbourhood.expenses
             self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
             self.seeking = self.get_seeking_status()
-            # If close to bankruptcy
-            if self.cash < 2*self.neighbourhood.expenses:    # Available money is less than double cost of annual living
+            # If bankrupt
+            if self.cash < 3*self.neighbourhood.expenses:    # Available money is less than tripple cost of annual living
                 self.seeking = True
+                self.contentment = self.contentment*(self.cash/(3*self.neighbourhood.expenses))        # Happiness penalty
+            if self.cash < self.neighbourhood.expenses:     # He is bunkrupt
+                self.seeking = True
+                self.house.owner = None
+                self.cash += self.house.price/2             # He has to sell for half a price to survive
+                self.house = None
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
@@ -179,16 +185,17 @@ class Neighbourhood(mg.GeoAgent):
         self.shops_index = None
         self.crime_index = None
         self.nature_index = None
-
-        # Neighbourhood attributes
-        self.capacity = None
         self.expenses = None
-        self.average_neighbourhood_price = None
-        self.average_neighbourhood_contentment = 1.0        # SHOULD BE INIT OTHERWISE, JUST DOESNT SHOW UP CORRECTLY ON STATS TABLE
         self.houses = []
 
-        # Tracked statisticsS
-        self.moves = 0
+        # Tracked statistics
+        self.capacity = None
+        self.average_neighbourhood_price = None
+        self.std_neighbourhood_price = None
+        self.average_neighbourhood_contentment = None
+        self.std_neighbourhood_contentment = None
+        self.move_in = 0
+        self.move_out = 0
     
     def add_houses(self, amount):
         """

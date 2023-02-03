@@ -1,5 +1,5 @@
 # What to run
-debug = False
+debug = True
 batch = False
 
 import mesa
@@ -16,14 +16,18 @@ if not debug:
     server.launch()
 
 # Needs a lot of updates: 1) Update Model Init, 2) Add Sampling, 3) Save Pickle between Steps 4) Save Final Output
-if batch and debug:
+if batch:
 
     #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
     # We should use some sampling to use paramter range for the complete running
-    params = {"num_houses": 0.01,
+    params = {"num_houses": 0.001,
             "noise": 0.0,
-            "contentment_threshold": 15,
-            "weight_materialistic": 0.2}
+            "start_money_multiplier": 2,
+            "start_money_multiplier_newcomers": 2,
+            "contentment_threshold": 0.8,
+            "weight_materialistic": 0.5,
+            "housing_growth_rate": 1.02,
+            "population_growth_rate": 1.02}
 
     results = []
 
@@ -33,21 +37,21 @@ if batch and debug:
         results = mesa.batch_run(
             Housing,
             parameters=params,
-            iterations=10,
+            iterations=2,
             max_steps=20,
-            number_processes=20,
+            number_processes=5,
             data_collection_period=1,
             display_progress=True,
         )
     
     if results:
         results_df = pd.DataFrame(results)
-        print(results_df.keys())
+        results_df.to_excel("output.xlsx") 
 
 
 # Or, to not run visualization
 if debug:
     # Run model for 10 steps
-    model = Housing(num_houses=0.001, noise=0.0, start_money_multiplier=2, start_money_multiplier_newcomers=2, contentment_threshold=1.0, weight_materialistic=0.5, housing_growth_rate=1.04, population_growth_rate=1.02, print_stats=True)
-    for i in range(10):
+    model = Housing(num_houses=0.001, noise=0.0, start_money_multiplier=2, start_money_multiplier_newcomers=2, contentment_threshold=0.6, weight_materialistic=0.5, housing_growth_rate=1.03, population_growth_rate=1.01, print_stats=True)
+    for i in range(20):
         model.step()
