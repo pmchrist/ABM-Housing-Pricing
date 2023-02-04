@@ -10,31 +10,56 @@ from model import Housing
 from agents import Person, Neighbourhood, House
 from multiprocessing import freeze_support
 
+from SALib.sample import saltelli
+from SALib.analyze import sobol
+
 
 # Needs a lot of updates: 1) Update Model Init, 2) Add Sampling, 3) Save Pickle between Steps 4) Save Final Output
 if batch:
 
-    #params = {"width": 10, "height": 10, "N": range(10, 500, 10)}
-    # We should use some sampling to use paramter range for the complete running
-    params = {"num_houses": 0.001,
-            "noise": 0.0,
-            "start_money_multiplier": np.arange(2, 3, 1),
-            "start_money_multiplier_newcomers": np.arange(2, 6, 2),
-            "contentment_threshold": np.linspace(0.4, 0.8, 4),
-            "weight_materialistic": np.linspace(0.2, 0.8, 4),
-            "housing_growth_rate": np.linspace(1.0, 1.02, 3),
-            "population_growth_rate": np.linspace(1.0, 1.01, 2)}
+    replicates = 10         # Same runs during batch
+    max_steps = 20          # Max step for simualtion
+    distinct_samples = 10   # Resolution of sampling space
+    number_processes = 20   # Amount of CPU threads to use
+
+    params = {
+        "num_houses":           np.linspace(0.0001, 0.01, distinct_samples),
+        "noise":                np.linspace(0.0, 0.1, distinct_samples),
+        "start_money_multiplier":           np.arange(1, 5, distinct_samples),
+        "start_money_multiplier_newcomers": np.arange(1, 5, distinct_samples),
+        "contentment_threshold":            np.linspace(0.0, 1.0, distinct_samples),
+        "weight_materialistic":             np.linspace(0.0, 1.0, distinct_samples),
+        "housing_growth_rate":              np.linspace(1.0, 1.02, distinct_samples),
+        "population_growth_rate":           np.linspace(1.0, 1.02, distinct_samples)
+    }
+
+    problem = {
+        'num_vars': 8,
+        'names': ['num_houses', 'noise', 'start_money_multiplier', 'start_money_multiplier_newcomers', 'contentment_threshold', 'weight_materialistic', 'housing_growth_rate', 'population_growth_rate'],
+        'bounds': [[0.0001, 0.01], [0.0, 0.1], [1, 5], [1, 5], [0.0, 1.0], [0.0, 1.0], [1.0, 1.02], [1.0, 1.02]]
+    }
+
+    # We get all our samples here
+    param_values = saltelli.sample(problem, distinct_samples)   # 18000 Samples
 
     results = []
 
+    # Local SA Dataset
+    # Vary one linspace, and fix others to default, one by one for each
+    # Probably same as old one, but vary params in input
+
+    # Global SA Dataset
+    # Use param_values from saltelli, need to be combined and rotated
+
+    # Old runner, all possible combinations
     # If for freeze_support() is only necessary on windows
     if __name__ == '__main__':
         freeze_support()
         results = mesa.batch_run(
             Housing,
             parameters=params,
-            iterations=2,
-            max_steps=20,
+            iterations=replicates,
+            max_steps=max_steps,
             number_processes=20,
             data_collection_period=1,
             display_progress=True,
