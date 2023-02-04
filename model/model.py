@@ -15,7 +15,7 @@ class Housing(mesa.Model):
     A Mesa model for housing market.
     """
 
-    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, start_money_multiplier_newcomers: int, contentment_threshold: float, weight_materialistic: float, housing_growth_rate: float, population_growth_rate: float, print_stats: bool = False):
+    def __init__(self, num_houses: int, noise: float, start_money_multiplier: int, start_money_multiplier_newcomers: int, contentment_threshold: float, weight_materialistic: float, housing_growth_rate: float, population_growth_rate: float, print_statistics: bool = False):
         """
         Create a model for the housing market.
 
@@ -30,12 +30,12 @@ class Housing(mesa.Model):
 
         Attributes:
             num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
-            population_size: Counter for assiging People IDs.
+            population: Counter for assiging People IDs.
             average_contentment: The average contentment of all agents.
             average_cash: The average cash of all agents.
             average_house_price: The average house price of all houses.
             deals: The amount of exchanges happening on each step.
-            house_seekers: The amount of agents looking for a new house on each step.
+            population_house_seekers: The amount of agents looking for a new house on each step.
             schedule: The scheduler for the model.
             space: The spatial environment for the model.
             datacollector: The datacollector for the model.
@@ -45,90 +45,32 @@ class Housing(mesa.Model):
         # Model parameters
         self.contentment_threshold = contentment_threshold
         self.weight_materialistic = weight_materialistic        # Used in Agent Contentment
-        self.num_houses = num_houses    # amount_of_houses = num_houses*REAL_LIFE_VALUES_FROM_AMSTERDAM
+        self.num_houses = num_houses                            # amount_of_houses = num_houses*REAL_LIFE_VALUES_FROM_AMSTERDAM
         self.housing_growth_rate = housing_growth_rate
         self.population_growth_rate = population_growth_rate
         self.start_money_multiplier = start_money_multiplier
         self.start_money_multiplier_newcomers = start_money_multiplier_newcomers
         self.noise = noise
 
-        # Tracked Statistics Global Level
-
-        # Amount of People
-
-        # Tracked Statistics Neighbourhood Level
-        # Deals
-
-        # Amount of Houses per Neighbourhood
-
-        
-
-
-        self.amount_of_houses = num_houses
-        self.house_seekers = 0
-
+        # Model's Global Stats
+        self.population = 0
+        self.amount_population_homeless = 0
+        self.average_cash_homeless = 0
+        self.std_cash_homeless = 0
         self.deals = 0
-        self.population_size = 0
-        self.total_wealth = 0
-        self.average_cash = 0
+        self.population_house_seekers = 0
+        self.amount_of_houses = 0
         self.average_contentment = 0
         self.average_house_price = 0
-
-        self.average_contentment_Centrum = 0
-        self.average_contentment_Oost = 0
-        self.average_contentment_NieuwWest = 0
-        self.average_contentment_Zuidoost = 0
-        self.average_contentment_Noord = 0
-        self.average_contentment_West = 0
-        self.average_contentment_Zuid = 0
-        self.average_house_price_Centrum = 0
-        self.average_house_price_Oost = 0
-        self.average_house_price_NieuwWest = 0
-        self.average_house_price_Zuidoost = 0
-        self.average_house_price_Noord = 0
-        self.average_house_price_West = 0
-        self.average_house_price_Zuid = 0
-
-
-        # print("Total Wealth:                " + str(self.total_wealth))
-        # print("Average Disposable Money:    " + str(self.average_cash))
-        # print("Average Contentment          " + str(self.average_contentment))
-        # print("Average House Price          " + str(self.average_house_price))
-        # print("House Seekers                " + str(self.house_seekers))
-        # print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) 
-        #         + " / " + str((self.population_size-self.house_seekers)/self.population_size))
-        # print("Number of Houses:            " + str(self.amount_of_houses))
-        # print("Number of Empty Houses:      " + str(self.amount_of_houses_empty))
-        # print("Number of People:            " + str(self.amount_of_people))
-        # print("Number of Homeless:          " + str(self.amount_of_people_homeless))
-
-
-
+        self.average_cash = 0
 
         # Model components
         self.schedule = mesa.time.RandomActivationByType(self)
         self.space = mg.GeoSpace(warn_crs_conversion=False)
 
-        self.datacollector = mesa.DataCollector(
-        model_reporters = {"Deals": "deals",
-         "Average Contentment Centrum": "average_contentment_Centrum",
-         "Average Contentment Oost": "average_contentment_Oost",
-         "Average Contentment NieuwWest": "average_contentment_NieuwWest",
-         "Average Contentment Zuidoost": "average_contentment_Zuidoost",
-         "Average Contentment Noord": "average_contentment_Noord",
-         "Average Contentment West": "average_contentment_West",
-         "Average Contentment Zuid": "average_contentment_Zuid",
-         "Average House Price Centrum": "average_house_price_Centrum",
-         "Average House Price Oost": "average_house_price_Oost",
-         "Average House Price NieuwWest": "average_house_price_NieuwWest",
-         "Average House Price Zuidoost": "average_house_price_Zuidoost",
-         "Average House Price Noord": "average_house_price_Noord",
-         "Average House Price West": "average_house_price_West",
-         "Average House Price Zuid": "average_house_price_Zuid"})
-
         # Variable for stopping the model when equilibirum is reached.
         self.running = True
-        self.print_statistics = print_stats
+        self.print_statistics = print_statistics
 
         # Set up the model
         self.setup_environment()
@@ -184,12 +126,12 @@ class Housing(mesa.Model):
         """
 
         # Add Person agent to the model
-        person = Person(unique_id="Initial_Person_"+str(self.population_size+id), 
+        person = Person(unique_id="Initial_Person_"+str(self.population+id), 
                         model=self, 
                         living_location=neighbourhood)
 
         # Assign House to the model and add the Person agent as it's owner
-        house = House(  unique_id="Initial_House_"+str(self.population_size+id),
+        house = House(  unique_id="Initial_House_"+str(self.population+id),
                         model=self,
                         neighbourhood=neighbourhood, 
                         initial_price=neighbourhood.average_neighbourhood_price,
@@ -199,7 +141,9 @@ class Housing(mesa.Model):
         
         # Assign House to the Person agent
         person.house = house
+        person.update_contentment_seeking()
 
+        # Add agents to the environment
         self.schedule.add(person)
         self.schedule.add(house)
         self.space.add_agents(house)
@@ -222,30 +166,143 @@ class Housing(mesa.Model):
                 self.add_person_and_house(i, neighbourhood)
 
             # Update counter for People IDs
-            self.population_size += neighbourhood.capacity
+            self.population += neighbourhood.capacity
         # Upd contentment with new people
-        self.update_model_params()
-        self.update_neighbourhood_stats(self.get_agents(Neighbourhood))
+        self.update_neighbourhoods_stats(self.get_agents(Neighbourhood))
+        if self.print_statistics: self.update_model_params()
 
+        # Create Data Collector
+        self.init_data_collector()
         # Collecting data   
         self.datacollector.collect(self)
 
         # Print initial parameters
         if self.print_statistics: self.print_init()
 
+    def init_data_collector(self):
+        
+        # Updating model level values
+        self.update_statistics()
+
+        # Gather Neighbourhood objects
+        self.list_Neighbourhoods_data = self.get_agents(Neighbourhood)
+
+        # Making a dictionary with all the parameters
+        model_reporters = {
+            "population":               lambda m: self.population,
+            "population_homeless":      lambda m: self.amount_population_homeless,
+            "average_cash_homeless":    lambda m: self.average_cash_homeless,
+            "std_cash_homeless":        lambda m: self.std_cash_homeless,
+            "amount_of_houses_Centrum":   lambda m: self.list_Neighbourhoods_data[0].capacity,
+            "amount_of_houses_Oost":      lambda m: self.list_Neighbourhoods_data[1].capacity,
+            "amount_of_houses_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].capacity,
+            "amount_of_houses_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].capacity,
+            "amount_of_houses_Noord":     lambda m: self.list_Neighbourhoods_data[4].capacity,
+            "amount_of_houses_West":      lambda m: self.list_Neighbourhoods_data[5].capacity,
+            "amount_of_houses_Zuid":      lambda m: self.list_Neighbourhoods_data[6].capacity,
+            "amount_of_empty_houses_Centrum":     lambda m: self.list_Neighbourhoods_data[0].empty_houses,
+            "amount_of_empty_houses_Oost":        lambda m: self.list_Neighbourhoods_data[1].empty_houses,
+            "amount_of_empty_houses_NieuwWest":   lambda m: self.list_Neighbourhoods_data[2].empty_houses,
+            "amount_of_empty_houses_Zuidoost":    lambda m: self.list_Neighbourhoods_data[3].empty_houses,
+            "amount_of_empty_houses_Noord":       lambda m: self.list_Neighbourhoods_data[4].empty_houses,
+            "amount_of_empty_houses_West":        lambda m: self.list_Neighbourhoods_data[5].empty_houses,
+            "amount_of_empty_houses_Zuid":        lambda m: self.list_Neighbourhoods_data[6].empty_houses,
+            "move_in_Centrum":   lambda m: self.list_Neighbourhoods_data[0].move_in,
+            "move_in_Oost":      lambda m: self.list_Neighbourhoods_data[1].move_in,
+            "move_in_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].move_in,
+            "move_in_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].move_in,
+            "move_in_Noord":     lambda m: self.list_Neighbourhoods_data[4].move_in,
+            "move_in_West":      lambda m: self.list_Neighbourhoods_data[5].move_in,
+            "move_in_Zuid":      lambda m: self.list_Neighbourhoods_data[6].move_in,
+            "move_out_Centrum":   lambda m: self.list_Neighbourhoods_data[0].move_out,
+            "move_out_Oost":      lambda m: self.list_Neighbourhoods_data[1].move_out,
+            "move_out_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].move_out,
+            "move_out_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].move_out,
+            "move_out_Noord":     lambda m: self.list_Neighbourhoods_data[4].move_out,
+            "move_out_West":      lambda m: self.list_Neighbourhoods_data[5].move_out,
+            "move_out_Zuid":      lambda m: self.list_Neighbourhoods_data[6].move_out,
+            "average_contentment_Centrum":   lambda m: self.list_Neighbourhoods_data[0].average_contentment,
+            "average_contentment_Oost":      lambda m: self.list_Neighbourhoods_data[1].average_contentment,
+            "average_contentment_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].average_contentment,
+            "average_contentment_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].average_contentment,
+            "average_contentment_Noord":     lambda m: self.list_Neighbourhoods_data[4].average_contentment,
+            "average_contentment_West":      lambda m: self.list_Neighbourhoods_data[5].average_contentment,
+            "average_contentment_Zuid":      lambda m: self.list_Neighbourhoods_data[6].average_contentment,
+            "average_neighbourhood_component_Centrum":   lambda m: self.list_Neighbourhoods_data[0].average_neighbourhood_component,
+            "average_neighbourhood_component_Oost":      lambda m: self.list_Neighbourhoods_data[1].average_neighbourhood_component,
+            "average_neighbourhood_component_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].average_neighbourhood_component,
+            "average_neighbourhood_component_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].average_neighbourhood_component,
+            "average_neighbourhood_component_Noord":     lambda m: self.list_Neighbourhoods_data[4].average_neighbourhood_component,
+            "average_neighbourhood_component_West":      lambda m: self.list_Neighbourhoods_data[5].average_neighbourhood_component,
+            "average_neighbourhood_component_Zuid":      lambda m: self.list_Neighbourhoods_data[6].average_neighbourhood_component,
+            "std_neighbourhood_component_Centrum":   lambda m: self.list_Neighbourhoods_data[0].std_neighbourhood_component,
+            "std_neighbourhood_component_Oost":      lambda m: self.list_Neighbourhoods_data[1].std_neighbourhood_component,
+            "std_neighbourhood_component_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].std_neighbourhood_component,
+            "std_neighbourhood_component_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].std_neighbourhood_component,
+            "std_neighbourhood_component_Noord":     lambda m: self.list_Neighbourhoods_data[4].std_neighbourhood_component,
+            "std_neighbourhood_component_West":      lambda m: self.list_Neighbourhoods_data[5].std_neighbourhood_component,
+            "std_neighbourhood_component_Zuid":      lambda m: self.list_Neighbourhoods_data[6].std_neighbourhood_component,
+            "average_house_price_Centrum":   lambda m: self.list_Neighbourhoods_data[0].average_house_price,
+            "average_house_price_Oost":      lambda m: self.list_Neighbourhoods_data[1].average_house_price,
+            "average_house_price_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].average_house_price,
+            "average_house_price_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].average_house_price,
+            "average_house_price_Noord":     lambda m: self.list_Neighbourhoods_data[4].average_house_price,
+            "average_house_price_West":      lambda m: self.list_Neighbourhoods_data[5].average_house_price,
+            "average_house_price_Zuid":      lambda m: self.list_Neighbourhoods_data[6].average_house_price,
+            "std_house_price_Centrum":   lambda m: self.list_Neighbourhoods_data[0].std_house_price,
+            "std_house_price_Oost":      lambda m: self.list_Neighbourhoods_data[1].std_house_price,
+            "std_house_price_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].std_house_price,
+            "std_house_price_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].std_house_price,
+            "std_house_price_Noord":     lambda m: self.list_Neighbourhoods_data[4].std_house_price,
+            "std_house_price_West":      lambda m: self.list_Neighbourhoods_data[5].std_house_price,
+            "std_house_price_Zuid":      lambda m: self.list_Neighbourhoods_data[6].std_house_price,
+            "average_salaries_Centrum":   lambda m: self.list_Neighbourhoods_data[0].average_salaries,
+            "average_salaries_Oost":      lambda m: self.list_Neighbourhoods_data[1].average_salaries,
+            "average_salaries_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].average_salaries,
+            "average_salaries_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].average_salaries,
+            "average_salaries_Noord":     lambda m: self.list_Neighbourhoods_data[4].average_salaries,
+            "average_salaries_West":      lambda m: self.list_Neighbourhoods_data[5].average_salaries,
+            "average_salaries_Zuid":      lambda m: self.list_Neighbourhoods_data[6].average_salaries,
+            "std_salaries_Centrum":   lambda m: self.list_Neighbourhoods_data[0].std_salaries,
+            "std_salaries_Oost":      lambda m: self.list_Neighbourhoods_data[1].std_salaries,
+            "std_salaries_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].std_salaries,
+            "std_salaries_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].std_salaries,
+            "std_salaries_Noord":     lambda m: self.list_Neighbourhoods_data[4].std_salaries,
+            "std_salaries_West":      lambda m: self.list_Neighbourhoods_data[5].std_salaries,
+            "std_salaries_Zuid":      lambda m: self.list_Neighbourhoods_data[6].std_salaries,
+            "average_cash_Centrum":   lambda m: self.list_Neighbourhoods_data[0].average_cash,
+            "average_cash_Oost":      lambda m: self.list_Neighbourhoods_data[1].average_cash,
+            "average_cash_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].average_cash,
+            "average_cash_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].average_cash,
+            "average_cash_Noord":     lambda m: self.list_Neighbourhoods_data[4].average_cash,
+            "average_cash_West":      lambda m: self.list_Neighbourhoods_data[5].average_cash,
+            "average_cash_Zuid":      lambda m: self.list_Neighbourhoods_data[6].average_cash,
+            "std_cash_Centrum":   lambda m: self.list_Neighbourhoods_data[0].std_cash,
+            "std_cash_Oost":      lambda m: self.list_Neighbourhoods_data[1].std_cash,
+            "std_cash_NieuwWest": lambda m: self.list_Neighbourhoods_data[2].std_cash,
+            "std_cash_Zuidoost":  lambda m: self.list_Neighbourhoods_data[3].std_cash,
+            "std_cash_Noord":     lambda m: self.list_Neighbourhoods_data[4].std_cash,
+            "std_cash_West":      lambda m: self.list_Neighbourhoods_data[5].std_cash,
+            "std_cash_Zuid":      lambda m: self.list_Neighbourhoods_data[6].std_cash,
+        }
+        # Initializing datacollector object
+        self.datacollector = mesa.DataCollector(
+            model_reporters=model_reporters
+        )
+
+    # Used only for debug and text output
     def update_model_params(self):    
 
         list_Houses = self.get_agents(House)
         list_People = self.get_agents(Person)
-        list_Neighbourhood = self.get_agents(Neighbourhood)
 
-        self.total_wealth = sum([person.cash for person in list_People if person.house])
         self.average_cash = np.mean([person.cash for person in list_People])
-        self.house_seekers = len([person for person in list_People if person.seeking])
+        self.total_wealth = np.sum([person.cash for person in list_People])
+        self.population_house_seekers = len([person for person in list_People if person.seeking])
         self.amount_of_houses = len(list_Houses)
         self.amount_of_houses_empty = len([house for house in list_Houses if house.owner == None])
         self.amount_of_people = len(list_People)
-        self.amount_of_people_homeless = len([person for person in list_People if person.house == None])
+        self.amount_population_homeless = len([person for person in list_People if person.house == None])
 
     def print_init(self):
         """
@@ -277,13 +334,13 @@ class Housing(mesa.Model):
         print("Average Disposable Money:    " + str(self.average_cash))
         print("Average Contentment          " + str(self.average_contentment))
         print("Average House Price          " + str(self.average_house_price))
-        print("House Seekers                " + str(self.house_seekers))
-        print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) 
-                + " / " + str((self.population_size-self.house_seekers)/self.population_size))
+        print("House Seekers                " + str(self.population_house_seekers))
+        print("Fraction Unhappy/Happy:      " + str(self.population_house_seekers/self.population) 
+                + " / " + str((self.population-self.population_house_seekers)/self.population))
         print("Number of Houses:            " + str(self.amount_of_houses))
         print("Number of Empty Houses:      " + str(self.amount_of_houses_empty))
         print("Number of People:            " + str(self.amount_of_people))
-        print("Number of Homeless:          " + str(self.amount_of_people_homeless))
+        print("Number of Homeless:          " + str(self.amount_population_homeless))
 
         # Print a fun little house :)
         print("\n                                ~~   ")
@@ -307,13 +364,13 @@ class Housing(mesa.Model):
         print("Average Disposable Money:    " + str(self.average_cash))
         print("Average Contentment          " + str(self.average_contentment))
         print("Average House Price          " + str(self.average_house_price))
-        print("House Seekers                " + str(self.house_seekers))
-        print("Fraction Unhappy/Happy:      " + str(self.house_seekers/self.population_size) 
-                + " / " + str((self.population_size-self.house_seekers)/self.population_size))
+        print("House Seekers                " + str(self.population_house_seekers))
+        print("Fraction Unhappy/Happy:      " + str(self.population_house_seekers/self.population) 
+                + " / " + str((self.population-self.population_house_seekers)/self.population))
         print("Number of Houses:            " + str(self.amount_of_houses))
         print("Number of Empty Houses:      " + str(self.amount_of_houses_empty))
         print("Number of People:            " + str(self.amount_of_people))
-        print("Number of Homeless:          " + str(self.amount_of_people_homeless))
+        print("Number of Homeless:          " + str(self.amount_population_homeless))
 
     def get_agents(self, agent_class):
         """
@@ -380,7 +437,11 @@ class Housing(mesa.Model):
         # Match two sellers if contentment imporves and they can afford the house
         for s1 in sellers:
             matches = {}
-            for s2 in sellers:
+            # Sampling only few sellers to improve speed and simulate not perfect choice (bounded rationality)
+            house_viewings = 100
+            if len(sellers) < 100: house_viewings=len(sellers)
+            sellers_sample = random.choices(sellers, k=house_viewings)
+            for s2 in sellers_sample:
                 if s1 != s2 and s1 is not None and s2 is not None:
 
                     # Calculate contentment for both parties in potential new neighbourhoods
@@ -448,18 +509,18 @@ class Housing(mesa.Model):
         
         # Find all house seekers and empty houses
         empty_houses = [house for house in self.get_agents(House) if house.owner == None]
-        house_seekers = [person for person in self.get_agents(Person) if person.seeking]
+        population_house_seekers = [person for person in self.get_agents(Person) if person.seeking]
 
         # Check if there are any empty houses or house seekers
-        if len(empty_houses) == 0 or len(house_seekers) == 0: return
+        if len(empty_houses) == 0 or len(population_house_seekers) == 0: return
 
         # Shuffle the lists
         random.shuffle(empty_houses)
-        random.shuffle(house_seekers)
+        random.shuffle(population_house_seekers)
 
         # Match house seekers with empty houses
         for house in empty_houses:
-            for seeker in house_seekers:
+            for seeker in population_house_seekers:
                 # Check if seeker already owns a house
                 if seeker.house:
                     new_contentment = seeker.calculate_contentment(house.neighbourhood, house)
@@ -485,20 +546,21 @@ class Housing(mesa.Model):
         """
 
         # Calculate number of new agents
-        new_agents = int(self.population_size * self.population_growth_rate) - self.population_size
+        new_agents = int(self.population * self.population_growth_rate) - self.population
         
         # Update population size
-        self.population_size += new_agents
+        self.population += new_agents
 
         # Add new agents
         for i in range(0, new_agents):
-            person = Person(unique_id="NewPerson_"+str(self.population_size+i), 
+            person = Person(unique_id="NewPerson_"+str(self.population+i), 
                             model=self, 
                             living_location=None)
             person.cash = self.start_money_multiplier_newcomers * person.cash     # Newcomers are supposed to get more money as they come, because they don't own a house
             self.schedule.add(person)
 
-    def update_neighbourhood_stats(self, neighbourhoods):
+    # Used for model init to update stats after people and house init
+    def update_neighbourhoods_stats(self, neighbourhoods):
         """
         Updates average house price for each neighbourhood.
 
@@ -507,40 +569,7 @@ class Housing(mesa.Model):
         """
 
         for neighbourhood in neighbourhoods:
-            # Check if there are houses in the neighbourhood
-            if len(neighbourhood.houses) == 0:
-                continue
-
-            # Create target variables
-            housing_prices = []
-            contentments = []
-
-            # Calculate new average price for each neighbourhood
-            for house in neighbourhood.houses:
-                # House Related Values:
-                housing_prices.append(house.price)
-                # Person Related Values:
-                if house.owner != None:
-                    person = house.owner
-                    contentments.append(person.contentment)
-
-            neighbourhood.average_neighbourhood_price = np.mean(housing_prices)
-            neighbourhood.std_neighbourhood_price = np.std(housing_prices)
-            neighbourhood.average_neighbourhood_contentment = np.mean(contentments)
-            neighbourhood.std_neighbourhood_contentment = np.std(contentments)
-        
-        self.update_more_model_stats(neighbourhoods)
-
-
-    def update_more_model_stats(self, neighbourhoods):
-        temp_pricing = []
-        temp_contentment = []
-        for neighbourhood in neighbourhoods:
-            temp_pricing.append(neighbourhood.average_neighbourhood_price)
-            temp_contentment.append(neighbourhood.average_neighbourhood_contentment)
-        self.average_house_price = np.mean(temp_pricing)
-        self.average_contentment = np.mean(temp_contentment)
-
+            neighbourhood.update_stats()
 
     def update_statistics(self):
         """
@@ -550,16 +579,29 @@ class Housing(mesa.Model):
             agents: List of all agents in the model.
         """
 
-        self.update_model_params()
-        self.update_neighbourhood_stats(self.get_agents(Neighbourhood))
+        # Updating model params to gather
+        list_People = self.get_agents(Person)
+        self.amount_population_homeless = len([person for person in list_People if person.house == None])
+        list_Homeless = [person.cash for person in list_People if person.house == None]
+        if len(list_Homeless) == 0:
+            self.average_cash_homeless = 0
+            self.std_cash_homeless = 0
+        else:
+            self.average_cash_homeless = np.mean([person.cash for person in list_People if person.house == None])
+            self.std_cash_homeless = np.std([person.cash for person in list_People if person.house == None])
 
-        
+        # Updating Neighbourhood Values
+        #self.update_neighbourhoods_stats(self.get_agents(Neighbourhood))
+
+        # Updating statistics used in console output
+        if self.print_statistics: self.update_model_params()
+  
     # IS DISABLED FOR NOW
     def equilibrium(self):
         """Checks if the model has reached equilibrium."""
         
         # Check if there are no more deals
-        if self.deals == 0:          # Is disabled, because now that we have growth new deals might always happen
+        if self.deals < 0:          # Is disabled, because now that we have growth new deals might always happen
             self.running = False
         else:
             self.running = True
@@ -585,12 +627,13 @@ class Housing(mesa.Model):
         # Advance all Agents by one step
         self.schedule.step()
 
-        # Updating statistics and collecting data
+        # Updating statistics (Model Related) and collecting data
         self.update_statistics()
         self.datacollector.collect(self)
 
-        print("\n")
-        if self.print_statistics: self.print_stats()
+        if self.print_statistics:
+            print("\n")
+            self.print_stats()
 
         # Check if model has reached equilibrium
         self.equilibrium()

@@ -42,9 +42,8 @@ class Person(mesa.Agent):
         self.weight_crime = neighbourhood_weights[2]
         self.weight_nature = neighbourhood_weights[3]
         # Params for wealth evaluation
-        salary = np.random.lognormal(11.130763621035388, 0.42361311973300236)                # Getting salary from overall distribution
-        self.cash = self.model.start_money_multiplier * salary
-        self.salary = salary
+        self.salary = np.random.lognormal(11.130763621035388, 0.42361311973300236)                # Getting salary from overall distribution
+        self.cash = self.model.start_money_multiplier * INCOME_MEAN
         # Weigths for utility function Money
         money_weights =  np.random.dirichlet(np.ones(3))                # They have to add up to 1
         self.weight_cash = money_weights[0]
@@ -54,8 +53,8 @@ class Person(mesa.Agent):
         self.neighbourhood = living_location
         self.house = None
         # Values we keep an eye on
-        self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
-        self.seeking = self.get_seeking_status() 
+        self.contentment = None
+        self.seeking = None
 
     def calculate_contentment(self, neighbourhood, house):
         """
@@ -77,16 +76,15 @@ class Person(mesa.Agent):
 
         # Check if agent is homeless
         if house == None or neighbourhood == None:
-            neighbourhood_component = 0
-            money_component = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4 + self.weight_cash * 0.6*(self.cash / CASH_MEAN)**0.4
-            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) + money_component ** (self.weight_materialistic)
+            self.neighbourhood_component = 0
+            contentment = 0.0
         else:
             # Neighbourhood Score, weights are already normalized
             neighbourhood_component_1 = neighbourhood.housing_quality_index * self.weight_house
             neighbourhood_component_2 = neighbourhood.shops_index * self.weight_shops
             neighbourhood_component_3 = neighbourhood.crime_index * self.weight_crime
             neighbourhood_component_4 = neighbourhood.nature_index * self.weight_nature
-            neighbourhood_component = neighbourhood_component_1 + neighbourhood_component_2 + neighbourhood_component_3 + neighbourhood_component_4
+            self.neighbourhood_component = neighbourhood_component_1 + neighbourhood_component_2 + neighbourhood_component_3 + neighbourhood_component_4
             # Wealth Score, with Normalization
             # All money params follow the non linear diminishing utility function. Salary&Cash: 0.6*x^0.4, House: 0.4*x^0.6
             wealth_component_1 = self.weight_house  * 0.4*(house.price / HOUSE_PRICE_MEAN)**0.6           # House price mean comes from Dataset, and is Init value
@@ -94,9 +92,9 @@ class Person(mesa.Agent):
             wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from Init_Model_Coeff*Mean_Salary, and is Init value
             money_component = wealth_component_1 + wealth_component_2 + wealth_component_3
             # Combining them
-            keeper_money.append(money_component)
-            keeper_neigh.append(neighbourhood_component)
-            contentment = neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
+            keeper_money.append(money_component)                    # Used for Server.py visualization
+            keeper_neigh.append(self.neighbourhood_component)
+            contentment = self.neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
         # Fix for complex number bug
         if isinstance(contentment, complex):
             contentment = contentment.real
@@ -113,6 +111,11 @@ class Person(mesa.Agent):
         else:
             return False
 
+    # Used to update values in the beginning, based on the fact the person got a house
+    def update_contentment_seeking(self):
+        self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
+        self.seeking = self.get_seeking_status() 
+
     def update_attributes(self):
         """
         Updates the agents attributes after every step.
@@ -127,17 +130,18 @@ class Person(mesa.Agent):
         # If is already in Amsterdam
         else:
             self.cash += self.salary - self.neighbourhood.expenses
+            # If bankrupt
+            if self.cash < 0:     # He is bunkrupt
+                self.seeking = True
+                self.cash = 0               # Reset Net Worth
+                self.contentment = 0.0      # Happiness penalty
+                self.house.owner = None
+                self.cash += self.house.price/2                 # He has to sell for half a price to survive
+                self.house = None
+            elif self.cash < 3*self.neighbourhood.expenses:    # Available money is less than tripple cost of annual living
+                self.contentment = self.contentment*(self.cash/(3*self.neighbourhood.expenses))        # Happiness penalty
             self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
             self.seeking = self.get_seeking_status()
-            # If bankrupt
-            if self.cash < 3*self.neighbourhood.expenses:    # Available money is less than tripple cost of annual living
-                self.seeking = True
-                self.contentment = self.contentment*(self.cash/(3*self.neighbourhood.expenses))        # Happiness penalty
-            if self.cash < self.neighbourhood.expenses:     # He is bunkrupt
-                self.seeking = True
-                self.house.owner = None
-                self.cash += self.house.price/2             # He has to sell for half a price to survive
-                self.house = None
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
@@ -189,14 +193,23 @@ class Neighbourhood(mg.GeoAgent):
         self.houses = []
 
         # Tracked statistics
-        self.capacity = None
-        self.average_neighbourhood_price = None
-        self.std_neighbourhood_price = None
-        self.average_neighbourhood_contentment = None
-        self.std_neighbourhood_contentment = None
-        self.move_in = 0
+        # Neighbourhood Values
+        self.capacity = None                                # amount_of_houses
+        self.empty_houses = None                            # amount_of_empty_houses
+        self.move_in = 0                                    # Movements
         self.move_out = 0
-    
+        # Values derived from Citizens (Person)
+        self.average_contentment = None                     # contentment
+        self.std_contentment = None
+        self.average_neighbourhood_component= None          # average_neighbourhood_component
+        self.std_neighbourhood_component = None
+        self.average_house_price = None                     # average_house_price
+        self.std_house_price = None
+        self.average_salaries = None                        # average_salaries
+        self.std_salaries = None
+        self.average_cash = None                            # average_cash
+        self.std_cash = None
+
     def add_houses(self, amount):
         """
         Adds houses to the neighbourhood.
@@ -232,7 +245,6 @@ class Neighbourhood(mg.GeoAgent):
         if new_houses > 0:
             self.add_houses(new_houses)
 
-
     def noise(self):
         """
         Adds stochastic noise to the neighbourhood's parameters.
@@ -266,7 +278,44 @@ class Neighbourhood(mg.GeoAgent):
         This function outputs object as a string
         """
 
-        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, disposable_income={self.disposable_income}, housing_quality_index={self.housing_quality_index}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
+        return f'Neighbourhood(name={self.unique_id}, capacity={self.capacity}, housing_quality_index={self.housing_quality_index}, shops_index={self.shops_index}, crime_index={self.crime_index}, nature_index={self.nature_index})'
+
+    def update_stats(self):
+
+        # Create target variables
+        locals_contentment = []
+        locals_neighbourhood_component = []
+        housing_prices = []
+        locals_salaries = []
+        locals_cash = []
+
+        # Calculate new stats for neighbourhood
+        self.capacity = len(self.houses)
+        self.empty_houses = 0
+        for house in self.houses:
+            # House Related Values:
+            housing_prices.append(house.price)
+            if house.owner == None:
+                self.empty_houses += 1           
+            else:
+                # Person Related Values:
+                person = house.owner
+                locals_contentment.append(person.contentment)
+                locals_neighbourhood_component.append(person.neighbourhood_component)
+                locals_salaries.append(person.salary)
+                locals_cash.append(person.cash)
+
+        # Update final stats
+        self.average_contentment = np.mean(locals_contentment)
+        self.std_contentment = np.std(locals_contentment)
+        self.average_neighbourhood_component = np.mean(locals_neighbourhood_component)
+        self.std_neighbourhood_component = np.std(locals_neighbourhood_component)
+        self.average_house_price = np.mean(housing_prices)
+        self.std_house_price = np.std(housing_prices)
+        self.average_salaries = np.mean(locals_salaries)
+        self.std_salaries = np.std(locals_salaries)
+        self.average_cash = np.mean(locals_cash)
+        self.std_cash = np.std(locals_cash)
 
     def step(self):
         """
@@ -275,10 +324,11 @@ class Neighbourhood(mg.GeoAgent):
 
         # Update neighbourhood parameters
         if self.model.noise: self.noise()
-        
         # Add new houses to the neighbourhood
         self.growth()
-
+        # Update statistics 
+        self.update_stats()        
+        
         return
 
 
