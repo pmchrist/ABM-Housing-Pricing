@@ -9,9 +9,6 @@ from shapely.geometry import Point
 HOUSE_PRICE_MEAN = 543204       # Comes from Data
 INCOME_MEAN = 68238             # Comes from Data/Distribution
 
-keeper_money = []
-keeper_neigh = []
-
 class Person(mesa.Agent):
     """
     Agent representing a person on the housing market of the city.
@@ -91,9 +88,6 @@ class Person(mesa.Agent):
             wealth_component_2 = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4                # Salary mean comes from distribution
             wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from Init_Model_Coeff*Mean_Salary, and is Init value
             money_component = wealth_component_1 + wealth_component_2 + wealth_component_3
-            # Combining them
-            keeper_money.append(money_component)                    # Used for Server.py visualization
-            keeper_neigh.append(self.neighbourhood_component)
             contentment = self.neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
         # Fix for complex number bug
         if isinstance(contentment, complex):

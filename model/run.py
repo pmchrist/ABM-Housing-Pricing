@@ -13,16 +13,15 @@ from agents import Person, Neighbourhood, House
 from multiprocessing import freeze_support
 
 from SALib.sample import saltelli
-from SALib.analyze import sobol
 
 
 # Needs a lot of updates: 1) Update Model Init, 2) Add Sampling, 3) Save Pickle between Steps 4) Save Final Output
 if batch:
 
-    replicates = 5         # Same runs during batch
-    max_steps = 10         # Max step for simualtion
-    distinct_samples = 5   # Resolution of sampling space
-    number_processes = 20  # Amount of CPU threads to use
+    replicates = 100        # Same runs during batch
+    max_steps = 20          # Max step for simualtion
+    distinct_samples = 10   # Resolution of sampling space
+    number_processes = 20   # Amount of CPU threads to use
 
     # # All params range, for reference
     # params = {

@@ -1,8 +1,6 @@
 from agents import Person, Neighbourhood, House
 from loader import data_loader
 
-from agents import keeper_money, keeper_neigh
-
 import random
 import numpy as np
 import json
@@ -639,9 +637,5 @@ class Housing(mesa.Model):
 
         # Check if model has reached equilibrium
         self.equilibrium()
-
-        # Just checking if agents are still follow desired distribution, used for debug
-        #print("Neigh: ", np.mean(keeper_neigh), np.std(keeper_neigh))
-        #print("Money: ", np.mean(keeper_money), np.std(keeper_money))
 
         return
