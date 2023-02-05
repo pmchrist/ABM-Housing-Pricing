@@ -255,9 +255,13 @@ class Neighbourhood(mg.GeoAgent):
 
         # Add noise to neighbourhood parameters
         self.housing_quality_index = self.housing_quality_index + random.uniform(-sigma, sigma)
+        if self.housing_quality_index < 0: self.housing_quality_index = 0
         self.shops_index = self.shops_index + random.uniform(-sigma, sigma)
+        if self.shops_index < 0: self.shops_index = 0
         self.crime_index = self.crime_index + random.uniform(-sigma, sigma)
+        if self.crime_index < 0: self.crime_index = 0
         self.nature_index = self.nature_index + random.uniform(-sigma, sigma)
+        if self.nature_index < 0: self.nature_index = 0
 
     def random_point(self):
         """
@@ -323,7 +327,7 @@ class Neighbourhood(mg.GeoAgent):
         """
 
         # Update neighbourhood parameters
-        if self.model.noise: self.noise()
+        if self.model.noise > 0.0: self.noise()
         # Add new houses to the neighbourhood
         self.growth()
         # Update statistics 
