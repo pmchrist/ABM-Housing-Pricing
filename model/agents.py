@@ -9,9 +9,6 @@ from shapely.geometry import Point
 HOUSE_PRICE_MEAN = 543204       # Comes from Data
 INCOME_MEAN = 68238             # Comes from Data/Distribution
 
-keeper_money = []
-keeper_neigh = []
-
 class Person(mesa.Agent):
     """
     Agent representing a person on the housing market of the city.
@@ -91,9 +88,6 @@ class Person(mesa.Agent):
             wealth_component_2 = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4                # Salary mean comes from distribution
             wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from Init_Model_Coeff*Mean_Salary, and is Init value
             money_component = wealth_component_1 + wealth_component_2 + wealth_component_3
-            # Combining them
-            keeper_money.append(money_component)                    # Used for Server.py visualization
-            keeper_neigh.append(self.neighbourhood_component)
             contentment = self.neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
         # Fix for complex number bug
         if isinstance(contentment, complex):
@@ -154,7 +148,6 @@ class Person(mesa.Agent):
 
         return
 
-
 class Neighbourhood(mg.GeoAgent):
     """
     GeoAgent representing a neighbourhood in the city.
@@ -200,15 +193,10 @@ class Neighbourhood(mg.GeoAgent):
         self.move_out = 0
         # Values derived from Citizens (Person)
         self.average_contentment = None                     # contentment
-        self.std_contentment = None
         self.average_neighbourhood_component= None          # average_neighbourhood_component
-        self.std_neighbourhood_component = None
         self.average_house_price = None                     # average_house_price
-        self.std_house_price = None
         self.average_salaries = None                        # average_salaries
-        self.std_salaries = None
         self.average_cash = None                            # average_cash
-        self.std_cash = None
 
     def add_houses(self, amount):
         """
@@ -311,15 +299,10 @@ class Neighbourhood(mg.GeoAgent):
 
         # Update final stats
         self.average_contentment = np.mean(locals_contentment)
-        self.std_contentment = np.std(locals_contentment)
         self.average_neighbourhood_component = np.mean(locals_neighbourhood_component)
-        self.std_neighbourhood_component = np.std(locals_neighbourhood_component)
         self.average_house_price = np.mean(housing_prices)
-        self.std_house_price = np.std(housing_prices)
         self.average_salaries = np.mean(locals_salaries)
-        self.std_salaries = np.std(locals_salaries)
         self.average_cash = np.mean(locals_cash)
-        self.std_cash = np.std(locals_cash)
 
     def step(self):
         """
@@ -334,7 +317,6 @@ class Neighbourhood(mg.GeoAgent):
         self.update_stats()        
         
         return
-
 
 class House(mg.GeoAgent):
     """
