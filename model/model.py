@@ -21,34 +21,36 @@ class Housing(mesa.Model):
             num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
             noise: Noise term added to the parameters of a neighbourhood.
             start_money_multiplier: Multiplier for the starting money of a person.
+            start_money_multiplier_newcomers: Bonus multiplier for the starting money of a person who enters housing market from outside.
             contentment_threshold: Threshold for agent to start looking for a new house.
-            weight_materialistic: The weight of money in the contentment function.
+            weight_materialistic: The weight of monetary parameters in the contentment function.
             housing_growth_rate: The rate at which the number of houses in the model grows.
             population_growth_rate: The rate at which the number of people in the model grows.
+            print_statistics: Flag if model outputs temporal results to the console
 
         Attributes:
-            num_houses: Number of houses in the model, as a fraction of the total number of houses in Amsterdam.
             population: Counter for assiging People IDs.
+            amount_population_homeless: Amount of people who do not own a house.
+            deals: The amount of exchanges happened so far.
+            amount_of_houses: Amount of houses in the city.
             average_contentment: The average contentment of all agents.
             average_cash: The average cash of all agents.
             average_house_price: The average house price of all houses.
-            deals: The amount of exchanges happening on each step.
-            population_house_seekers: The amount of agents looking for a new house on each step.
             schedule: The scheduler for the model.
             space: The spatial environment for the model.
-            datacollector: The datacollector for the model.
-            running: Boolean for stopping the model when equilibrium is reached.
+            running: Boolean for stopping the model.
         """
 
         # Model parameters
         self.contentment_threshold = contentment_threshold
         self.weight_materialistic = weight_materialistic        # Used in Agent Contentment
-        self.num_houses = num_houses                            # amount_of_houses = num_houses*REAL_LIFE_VALUES_FROM_AMSTERDAM
+        self.num_houses = num_houses
         self.housing_growth_rate = housing_growth_rate
         self.population_growth_rate = population_growth_rate
         self.start_money_multiplier = start_money_multiplier
         self.start_money_multiplier_newcomers = start_money_multiplier_newcomers
         self.noise = noise
+        self.print_statistics = print_statistics
 
         # Model's Global Stats
         self.population = 0
@@ -56,8 +58,8 @@ class Housing(mesa.Model):
         self.deals = 0
         self.amount_of_houses = 0
         self.average_contentment = 0
-        self.average_house_price = 0
         self.average_cash = 0
+        self.average_house_price = 0
 
         # Model components
         self.schedule = mesa.time.RandomActivationByType(self)
@@ -65,7 +67,6 @@ class Housing(mesa.Model):
 
         # Variable for stopping the model when equilibirum is reached.
         self.running = True
-        self.print_statistics = print_statistics
 
         # Set up the model
         self.setup_environment()
@@ -75,7 +76,7 @@ class Housing(mesa.Model):
         Adds Neighbourhood agents to the model.
 
         Args:
-            fn: The path to the GeoJSON file containing the neighbourhoods.
+            fn: The path to the GeoJSON file containing the neighbourhoods' polygons
         """
 
         # Seting up GeoAgents for neighbourhoods
@@ -88,10 +89,10 @@ class Housing(mesa.Model):
 
     def load_neighbourhood_data(self, neighbourhoods):
         """
-        Loads the data from the neighbourhoods dataset.
+        Loads the data from the neighbourhoods dataset to set neighbourhood parameters to real life values.
 
         Args:
-            neighbourhood: The neighbourhood to load the data for.
+            neighbourhoods: List of Neighbourhoods to initialize.
         """
 
         # Load real-world data
@@ -175,6 +176,9 @@ class Housing(mesa.Model):
         if self.print_statistics: self.print_init()
 
     def init_data_collector(self):
+        """
+        Initializes a datacollector for our model        
+        """
         
         # Updating model level values
         self.update_statistics()
@@ -230,14 +234,16 @@ class Housing(mesa.Model):
                 "average_house_price_Zuid":      lambda m: m.list_Neighbourhoods_data[6].average_house_price,
             }
 
-
         # Initializing datacollector object
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reporters
         )
 
     # Used only for debug and text output
-    def update_model_params(self):    
+    def update_model_params(self):
+        """
+        Updates all parameters for the model output to the console (if print_statistics == True)
+        """
 
         list_Houses = self.get_agents(House)
         list_People = self.get_agents(Person)
@@ -251,7 +257,7 @@ class Housing(mesa.Model):
         self.average_cash = np.mean([person.cash for person in list_People])
         self.average_house_price = np.mean([house.price for house in list_Houses])
 
-
+    # Outputs to the console
     def print_init(self):
         """
         Prints the initial parameters and stats of the model.
@@ -325,7 +331,7 @@ class Housing(mesa.Model):
         Returns a list of all the specifiied Agents in the model.
 
         Args:
-            agent_class: The class of the agents to be returned.
+            agent_class: The class of the agents type to be returned.
         """
 
         agents = []
@@ -336,14 +342,14 @@ class Housing(mesa.Model):
 
     def auction_swap(self, s1, s2):
         """
-        Performs the swap of cash, neighbourhoods, and houses between two agents.
+        Performs the house exchange between two Person agents. They swap Houses, Neighbourhood and get or lose some cash (based on the house value).
 
         Args:
             s1: First Person agent.
             s2: Second Person agent.
         """
 
-        # Detrmine price of houses (**2 just to amplify change)
+        # Detrmine price of houses (**2 just to amplify the change)
         new_house1_price = (1 + s2.calculate_contentment(s1.neighbourhood, s1.house) - s2.calculate_contentment(s2.neighbourhood, s2.house))**2 * s1.house.price
         new_house2_price = (1 + s1.calculate_contentment(s2.neighbourhood, s2.house) - s1.calculate_contentment(s1.neighbourhood, s1.house))**2 * s2.house.price
 
@@ -376,6 +382,7 @@ class Housing(mesa.Model):
     def auction(self):
         """
         Performs trades between agents that are willing to sell and trade their house for another house.
+        Or simply put matches Person agents that are willing to leave their neighbourhood (ontentment < contentment_threshold).
         """
         
         # Find all agents that are willing to sell and trade
@@ -389,13 +396,12 @@ class Housing(mesa.Model):
             house_viewings = 100
             if len(sellers) < 100: house_viewings=len(sellers)
             sellers_sample = random.choices(sellers, k=house_viewings)
+            # Starting matching process
             for s2 in sellers_sample:
                 if s1 != s2 and s1 is not None and s2 is not None:
-
                     # Calculate contentment for both parties in potential new neighbourhoods
                     new_s1_score = s1.calculate_contentment(s2.neighbourhood, s2.house)
                     new_s2_score = s2.calculate_contentment(s1.neighbourhood, s1.house)
-
                     # Check if both parties are happy with the deal
                     if new_s1_score > s1.contentment and new_s2_score > s2.contentment:    
                         # Detrmine price of houses (**2 just to amplify change)
@@ -452,7 +458,7 @@ class Housing(mesa.Model):
 
     def sell_empty_houses(self):
         """
-        Sells empty houses to the highest bidder.
+        Sells empty houses to the highest bidders.
         """
         
         # Find all house seekers and empty houses
@@ -510,10 +516,10 @@ class Housing(mesa.Model):
     # Used for model init to update stats after people and house init
     def update_neighbourhoods_stats(self, neighbourhoods):
         """
-        Updates average house price for each neighbourhood.
+        Updates parameters of all Neighbourhoods.
 
         Args:
-            neighbourhoods: List of all neighbourhoods in the model.
+            neighbourhoods: List of neighbourhoods to be updated.
         """
 
         for neighbourhood in neighbourhoods:
@@ -521,18 +527,12 @@ class Housing(mesa.Model):
 
     def update_statistics(self):
         """
-        Updates statistics for the model.
-        
-        Args:
-            agents: List of all agents in the model.
+        Updates all statistics for the model.
         """
 
         # Updating model params to gather
         list_People = self.get_agents(Person)
         self.amount_population_homeless = len([person for person in list_People if person.house == None])
-
-        # Updating Neighbourhood Values
-        #self.update_neighbourhoods_stats(self.get_agents(Neighbourhood))
 
         # Updating statistics used in console output
         if self.print_statistics: self.update_model_params()
@@ -542,7 +542,7 @@ class Housing(mesa.Model):
         """Checks if the model has reached equilibrium."""
         
         # Check if there are no more deals
-        if self.deals < 0:          # Is disabled, because now that we have growth new deals might always happen
+        if self.deals < 0:
             self.running = False
         else:
             self.running = True

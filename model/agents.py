@@ -12,26 +12,24 @@ INCOME_MEAN = 68238             # Comes from Data/Distribution
 class Person(mesa.Agent):
     """
     Agent representing a person on the housing market of the city.
+    Person generates money and can buy/sell Houses (move-in/move-out between neighbourhoods)
+
     """
 
     def __init__(self, unique_id: int, model: mesa.Model, living_location: mg.GeoAgent):
-        """Create a new agent (person) for the housing market.
+        """
+        Create a new agent (Person) for the housing market "model". This agent lives in the Neighbourhood ("living_location").
 
         Args:
             unique_id: Unique identifier for the agent.
             model: Mesa model the agent is part of.
-            weight_house: Weight for house loving.
-            weight_shops: Weight for shops loving.
-            weight_crime: Weight for crime loving.
-            weight_nature: Weight for nature loving.
-            starting_money: Initial amount of money the agent has.
             living_location: Initial living neighbourhood of the agent represented as a GeoAgent.
         """
 
         super().__init__(unique_id, model)
 
         # Main param for Utility function
-        self.weight_materialistic = model.weight_materialistic          # How much net worth affects person's happiness
+        self.weight_materialistic = model.weight_materialistic          # How much net worth affects person's happiness, parameter from model
         # Weigths for utility function Neighbourhood
         neighbourhood_weights =  np.random.dirichlet(np.ones(4))        # They have to add up to 1
         self.weight_house = neighbourhood_weights[0]
@@ -39,8 +37,8 @@ class Person(mesa.Agent):
         self.weight_crime = neighbourhood_weights[2]
         self.weight_nature = neighbourhood_weights[3]
         # Params for wealth evaluation
-        self.salary = np.random.lognormal(11.130763621035388, 0.42361311973300236)                # Getting salary from overall distribution
-        self.cash = self.model.start_money_multiplier * INCOME_MEAN
+        self.salary = np.random.lognormal(11.130763621035388, 0.42361311973300236)      # Getting salary from overall distribution
+        self.cash = self.model.start_money_multiplier * INCOME_MEAN     # Initialize with average income across Amsterdam
         # Weigths for utility function Money
         money_weights =  np.random.dirichlet(np.ones(3))                # They have to add up to 1
         self.weight_cash = money_weights[0]
@@ -55,17 +53,18 @@ class Person(mesa.Agent):
 
     def calculate_contentment(self, neighbourhood, house):
         """
-        Calculates the contentness of the agent based on a given neighbourhood.
+        Calculates the contentness of the agent based on a given neighbourhood and house.
         This score is a derrivation of the Cobb-Douglas utility function.
         
         Formula: U = H ** a * M ** b
-        H: House contentness
-        M: Amount of cash
-        a: Weight for house loving
-        b: Weight for money loving
+        H: Neighbourhood score (contentness with neighbourhood)
+        M: Wealth score (contentness with material position with the new property)
+        a: Weight for neighbourhood loving (1-b)
+        b: Weight for wealth loving
         
         Args:
             neighbourhood: The neighbourhood you want to calculate an agent's contentness for.
+            house: House in which person is/will be living. Used to calculate wealth componenet.
         """
 
         # Parameter which is static but depends on model, so we have to calculate it each time
@@ -84,20 +83,17 @@ class Person(mesa.Agent):
             self.neighbourhood_component = neighbourhood_component_1 + neighbourhood_component_2 + neighbourhood_component_3 + neighbourhood_component_4
             # Wealth Score, with Normalization
             # All money params follow the non linear diminishing utility function. Salary&Cash: 0.6*x^0.4, House: 0.4*x^0.6
-            wealth_component_1 = self.weight_house  * 0.4*(house.price / HOUSE_PRICE_MEAN)**0.6           # House price mean comes from Dataset, and is Init value
-            wealth_component_2 = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4                # Salary mean comes from distribution
-            wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from Init_Model_Coeff*Mean_Salary, and is Init value
+            wealth_component_1 = self.weight_house  * 0.4*(house.price / HOUSE_PRICE_MEAN)**0.6           # House price mean comes from dataset, and is Init value
+            wealth_component_2 = self.weight_salary * 0.6*(self.salary / INCOME_MEAN)**0.4                # Salary mean comes from gemente dataset distribution
+            wealth_component_3 = self.weight_cash   * 0.6*(self.cash   / CASH_MEAN)**0.4                  # Cash Mean comes from the model intialisation, and is Init value
             money_component = wealth_component_1 + wealth_component_2 + wealth_component_3
-            contentment = self.neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)
-        # Fix for complex number bug
-        if isinstance(contentment, complex):
-            contentment = contentment.real
+            contentment = self.neighbourhood_component ** (1.0 - self.weight_materialistic) * money_component ** (self.weight_materialistic)    # We combine two parts with Cobb-Douglass utility function
 
         return contentment
 
     def get_seeking_status(self):
         """
-        Updates the house seeking status of the agent.
+        Finds the house seeking status of the agent. Depends on current Contentment.
         """
 
         if self.contentment < self.model.contentment_threshold:
@@ -105,17 +101,20 @@ class Person(mesa.Agent):
         else:
             return False
 
-    # Used to update values in the beginning, based on the fact the person got a house
     def update_contentment_seeking(self):
+        """
+        Updates contentment of the Person and assignes seeking status for the next step, based on the model's threshold.
+        """
+
         self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
         self.seeking = self.get_seeking_status() 
 
     def update_attributes(self):
         """
-        Updates the agents attributes after every step.
+        Updates all the dynamic attributes of the agent after every step.
         """
 
-        # Check if agent is lives outside of Amsterdam
+        # Check if agent lives outside of Amsterdam
         if self.house == None or self.neighbourhood == None:
             # Update Cash, Contentment and seeking status
             self.cash += self.salary
@@ -123,19 +122,19 @@ class Person(mesa.Agent):
             self.seeking = True
         # If is already in Amsterdam
         else:
-            self.cash += self.salary - self.neighbourhood.expenses
+            self.cash += self.salary - self.neighbourhood.expenses      # Subtracting living costs
             # If bankrupt
-            if self.cash < 0:     # He is bunkrupt
-                self.seeking = True
+            if self.cash < 0:               # He is bunkrupt
                 self.cash = 0               # Reset Net Worth
                 self.contentment = 0.0      # Happiness penalty
                 self.house.owner = None
-                self.cash += self.house.price/2                 # He has to sell for half a price to survive
+                self.cash += self.house.price/2                 # He has to sell his house for half a price to survive
                 self.house = None
+                self.seeking = True         # Starts looking for a house
+            # If is close to bankruptcy
             elif self.cash < 3*self.neighbourhood.expenses:    # Available money is less than tripple cost of annual living
                 self.contentment = self.contentment*(self.cash/(3*self.neighbourhood.expenses))        # Happiness penalty
-            self.contentment = self.calculate_contentment(self.neighbourhood, self.house)
-            self.seeking = self.get_seeking_status()
+            self.update_contentment_seeking()
 
     # Currently only finding contentment, based on 2 parameters
     def step(self):
@@ -160,19 +159,26 @@ class Neighbourhood(mg.GeoAgent):
         Args:
             unique_id: Unique identifier for the agent, or neigbourhood name.
             model: Mesa model the agent is part of.
-            geometry: GeoJSON geometry object.
+            geometry: Polygon object from GeoJSON of Gemente.
             crs: Coordinate reference system.
 
             Attributes:
                 housing_quality_index: Housing quality index of this neighbourhood.
-                shops_index: Shops index of this neighbourhood.
-                crime_index: Crime index of this neighbourhood.
-                nature_index: Nature index of this neighbourhood.
-                capacity: Max amount of houses in this neighbourhood.
-                disposable_income: Net average income of this neighbourhood.
-                average_house_price_history: Average house price in this neighbourhood.
-                houses: List of houses in this neighbourhood.
-                moves: Amount of traded houses in this neighbourhood.
+                shops_index: Shopping quality index of this neighbourhood.
+                crime_index: Crime level index of this neighbourhood.
+                nature_index: Nature index (how green it is) of this neighbourhood.
+
+                capacity: Current amount of houses in this neighbourhood.
+                empty_houses: List of houses in this neighbourhood.
+                move_in: Amount of people who moved into the Neighbourhood
+                move_out: Amount of people who left from the Neighbourhood
+
+                average_contentment: Average contentment of People living in the Neighbourhood
+                average_neighbourhood_component: Average contentment with Neigbourhood only score of People living in the Neighbourhood
+                average_house_price: Average house price in this neighbourhood.
+                average_salaries: Average salary of People living in the Neighbourhood
+                average_cash: Average net wealth of People living in the Neighbourhood
+
         """
 
         super().__init__(unique_id, model, geometry, crs)
@@ -235,7 +241,7 @@ class Neighbourhood(mg.GeoAgent):
 
     def noise(self):
         """
-        Adds stochastic noise to the neighbourhood's parameters.
+        Adds stochastic noise to the neighbourhood's parameters. Simulates possible degradation/improvement in the neighbourhood
         """
 
         # Noise term
@@ -243,7 +249,7 @@ class Neighbourhood(mg.GeoAgent):
 
         # Add noise to neighbourhood parameters
         self.housing_quality_index = self.housing_quality_index + random.uniform(-sigma, sigma)
-        if self.housing_quality_index < 0: self.housing_quality_index = 0
+        if self.housing_quality_index < 0: self.housing_quality_index = 0       # Neighbourhood parameters cannot become negative
         self.shops_index = self.shops_index + random.uniform(-sigma, sigma)
         if self.shops_index < 0: self.shops_index = 0
         self.crime_index = self.crime_index + random.uniform(-sigma, sigma)
@@ -333,7 +339,7 @@ class House(mg.GeoAgent):
             neighbourhood: Neighbourhood the house is located in.
             initial_price: Initial price of the house.
             owner: Initial owner of the house.
-            geometry: GeoJSON geometry object.
+            geometry: Polygon object.
             crs: Coordinate reference system.
         
         """
@@ -348,10 +354,4 @@ class House(mg.GeoAgent):
         # Assign house to Neighbourhood agent
         neighbourhood.houses.append(self)
 
-    def step(self):
-        """
-        Advance house one step.
-        """
-
-        return
     

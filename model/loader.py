@@ -1,6 +1,10 @@
 import pandas as pd
 
 class data_loader:
+    """
+    Loads data for initialisation of the model
+    """
+    
     df = pd.read_excel('../data/_combined_datasets.xlsx', engine='openpyxl')
 
     neighbourhood_households_amount = df["houses"].values.tolist()      # Capacity
