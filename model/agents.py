@@ -148,7 +148,6 @@ class Person(mesa.Agent):
 
         return
 
-
 class Neighbourhood(mg.GeoAgent):
     """
     GeoAgent representing a neighbourhood in the city.
@@ -194,15 +193,10 @@ class Neighbourhood(mg.GeoAgent):
         self.move_out = 0
         # Values derived from Citizens (Person)
         self.average_contentment = None                     # contentment
-        self.std_contentment = None
         self.average_neighbourhood_component= None          # average_neighbourhood_component
-        self.std_neighbourhood_component = None
         self.average_house_price = None                     # average_house_price
-        self.std_house_price = None
         self.average_salaries = None                        # average_salaries
-        self.std_salaries = None
         self.average_cash = None                            # average_cash
-        self.std_cash = None
 
     def add_houses(self, amount):
         """
@@ -305,15 +299,10 @@ class Neighbourhood(mg.GeoAgent):
 
         # Update final stats
         self.average_contentment = np.mean(locals_contentment)
-        self.std_contentment = np.std(locals_contentment)
         self.average_neighbourhood_component = np.mean(locals_neighbourhood_component)
-        self.std_neighbourhood_component = np.std(locals_neighbourhood_component)
         self.average_house_price = np.mean(housing_prices)
-        self.std_house_price = np.std(housing_prices)
         self.average_salaries = np.mean(locals_salaries)
-        self.std_salaries = np.std(locals_salaries)
         self.average_cash = np.mean(locals_cash)
-        self.std_cash = np.std(locals_cash)
 
     def step(self):
         """
@@ -328,7 +317,6 @@ class Neighbourhood(mg.GeoAgent):
         self.update_stats()        
         
         return
-
 
 class House(mg.GeoAgent):
     """
