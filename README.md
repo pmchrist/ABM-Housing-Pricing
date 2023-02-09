@@ -62,6 +62,7 @@ If you want to dive into code here is the outline of the repository:
 ## Important Links
 - Notes: https://docs.google.com/document/d/1djK0TwGeARVyFwg5YD1hHhqHEO6rcuoJM2oxxlm5gyk/edit
 - Overleaf: https://www.overleaf.com/1611799474njnmvddrkcck
+- Slides: https://docs.google.com/presentation/d/1mKZt-l1SZImBfMfunaePMaebxOk8ldWtiIUQf8XfFts/edit?usp=sharing
 
 ## Licence
 [MIT](https://choosealicense.com/licenses/mit/)
