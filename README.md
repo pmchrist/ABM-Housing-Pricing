@@ -12,7 +12,7 @@ You can read more about theoretical framework and detailed ODD in our paper (lin
 
 ## Installation
 
-## Prerequisites:
+## Prerequisites
 All the necessary libraries, frameworks, and modules can be installed through:
 
 ```bash
