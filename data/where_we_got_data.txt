@@ -1,7 +1,0 @@
-Amsterdam maps:
-
-One map is clean and from github (Main Regions)
-https://github.com/codeforgermany/click_that_hood/blob/main/public/data/amsterdam.geojson
-
-Another way, more generic, is to get basic data from gemente as latlng geojson and use it (has all the regions and ids)
-https://maps.amsterdam.nl/open_geodata/
