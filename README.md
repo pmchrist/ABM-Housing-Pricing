@@ -6,6 +6,7 @@ The paper tries to gain an insight into the house prices and societal contentmen
 - an increase in demand;
 - the societal standards;
 - agents' preferences; 
+
 The model will be described following the ODD protocol for describing an Agent-Based Model. The model will be interpreted through a local and global sensitivity analysis, alongside a structural validity analysis. The results have shown that the model can replicate some basic dynamics of the housing market. However, for this model to become able to inform policymakers, more future research and alterations have to be accomplished. This is why the proposed model is simply a basic framework for the Amsterdam housing market.
 You can read more about theoretical framework and detailed ODD in our paper (link down), or take a look into code. To run it you can follow guide in the next section.
 
