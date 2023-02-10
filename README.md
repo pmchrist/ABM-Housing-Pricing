@@ -42,21 +42,21 @@ python3 run.py batch
 If you want to dive into code in more detail here is the outline of the repository:
 
 -analysis
-    -experiments.ipynb: a notebook where all the experiments with model output has been made
-    -simulations_for_SA_results_reader.ipynb: a file where the sensitivity analysis is performed
-    -plots_experiments: a folder in which all the images from experiments are saved
-    -results_for_SA: a folder in which output of simulations are saved for the Sensitivity Analysis
+    --experiments.ipynb: a notebook where all the experiments with model output has been made
+    --simulations_for_SA_results_reader.ipynb: a file where the sensitivity analysis is performed
+    --plots_experiments: a folder in which all the images from experiments are saved
+    --results_for_SA: a folder in which output of simulations are saved for the Sensitivity Analysis
 -data
-    -Amsterdam_map_fin.json: dataset which contains polygons and location of the boroughs of Amsterdam
-    -_combined_datasets.xlsx: a file with combined data from datasets which we use in the model
-    -something_very_detailed: a folder with datasets which contains datasets that are cleaned and normalized
-    -original_datasets: a folder with original datasets, before data cleaning and normalizing
+    --Amsterdam_map_fin.json: dataset which contains polygons and location of the boroughs of Amsterdam
+    --_combined_datasets.xlsx: a file with combined data from datasets which we use in the model
+    --something_very_detailed: a folder with datasets which contains datasets that are cleaned and normalized
+    --original_datasets: a folder with original datasets, before data cleaning and normalizing
 -model
-    -agents.py: file with all the Agent classes
-    -loader.py: in this file data loader for datasets is implemented
-    -model.py: file which contains the main model
-    -run.py: in this file we declare the simulation execution
-    -server.py: in this file visualisation for our Mesa Geo model is implemented
+    --agents.py: file with all the Agent classes
+    --loader.py: in this file data loader for datasets is implemented
+    --model.py: file which contains the main model
+    --run.py: in this file we declare the simulation execution
+    --server.py: in this file visualisation for our Mesa Geo model is implemented
 
 ## References
 
